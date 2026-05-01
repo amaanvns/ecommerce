@@ -10,7 +10,6 @@ import {
   timestamp,
   index,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import { categories } from './categories.js';
 
 export const products = pgTable(

@@ -23,10 +23,11 @@ const loginSchema = z.object({
 
 function signTokens(userId: string, role: string, email: string) {
   const payload = { sub: userId, role, email };
-  const accessToken = jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN as string });
-  const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRES_IN as string,
+  const opts = (exp: string): jwt.SignOptions => ({
+    expiresIn: exp as jwt.SignOptions['expiresIn'],
   });
+  const accessToken = jwt.sign(payload, env.JWT_SECRET, opts(env.JWT_EXPIRES_IN));
+  const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, opts(env.JWT_REFRESH_EXPIRES_IN));
   return { accessToken, refreshToken };
 }
 
