@@ -1,13 +1,9 @@
-@import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Base design tokens */
 :root {
   --color-primary: #6366f1;
-  --color-primary-dark: #4f46e5;
-}
-
-* {
-  box-sizing: border-box;
 }
 
 body {
@@ -16,6 +12,4 @@ body {
     system-ui,
     -apple-system,
     sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
 }
