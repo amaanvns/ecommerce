@@ -1,9 +1,29 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
-
-import { routes } from './app.routes';
+import {
+  APP_INITIALIZER,
+  ApplicationConfig,
+  inject,
+  provideZoneChangeDetection,
+} from '@angular/core';
+import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { routes } from './app.routes';
+import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { AuthService } from './core/services/auth.service';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideRouter(routes), provideClientHydration(withEventReplay())]
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes, withComponentInputBinding(), withViewTransitions()),
+    provideClientHydration(withEventReplay()),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: () => {
+        const auth = inject(AuthService);
+        return () => auth.initialize();
+      },
+      multi: true,
+    },
+  ],
 };
