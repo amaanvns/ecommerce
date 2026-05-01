@@ -49,6 +49,6 @@ export class HomeComponent {
   readonly features = [
     { icon: '🚀', title: 'Fast Delivery', desc: 'Get your orders delivered in 2–5 business days.' },
     { icon: '🔒', title: 'Secure Payments', desc: 'Your payment information is always protected.' },
-    { icon: '↩️', title: 'Easy Returns', desc: '30-day hassle-free return policy on all items.' },
+    { icon: '🔄', title: 'Easy Returns', desc: '30-day hassle-free return policy on all items.' },
   ];
 }
