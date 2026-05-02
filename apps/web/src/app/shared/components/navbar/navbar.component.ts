@@ -150,7 +150,7 @@ import { CartService } from '../../../core/services/cart.service';
                       Wishlist
                     </a>
                     <a
-                      routerLink="/account/orders"
+                      routerLink="/orders"
                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       Orders

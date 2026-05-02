@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
 import { CartService } from '../../../core/services/cart.service';
 
@@ -172,6 +172,7 @@ import { CartService } from '../../../core/services/cart.service';
           </div>
           <p class="text-xs text-gray-400">Shipping and taxes calculated at checkout</p>
           <button
+            (click)="goToCheckout()"
             class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
           >
             Proceed to Checkout
@@ -190,8 +191,14 @@ import { CartService } from '../../../core/services/cart.service';
 })
 export class CartDrawerComponent {
   readonly cart = inject(CartService);
+  private readonly router = inject(Router);
 
   readonly objectKeys = Object.keys;
+
+  goToCheckout(): void {
+    this.cart.close();
+    this.router.navigate(['/checkout']);
+  }
 
   formatAttrs(attrs: Record<string, string>): string {
     return Object.entries(attrs)

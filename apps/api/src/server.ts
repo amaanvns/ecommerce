@@ -10,6 +10,8 @@ import { categoriesRouter } from './modules/categories/categories.router.js';
 import { productsRouter } from './modules/products/products.router.js';
 import { cartRouter } from './modules/cart/cart.router.js';
 import { wishlistRouter } from './modules/wishlist/wishlist.router.js';
+import { checkoutRouter } from './modules/checkout/checkout.router.js';
+import { ordersRouter } from './modules/orders/orders.router.js';
 
 const app = express();
 
@@ -41,6 +43,8 @@ app.use('/api/v1/categories', categoriesRouter);
 app.use('/api/v1/products', productsRouter);
 app.use('/api/v1/cart', cartRouter);
 app.use('/api/v1/wishlist', wishlistRouter);
+app.use('/api/v1/checkout', checkoutRouter);
+app.use('/api/v1/orders', ordersRouter);
 
 app.use(errorHandler);
 

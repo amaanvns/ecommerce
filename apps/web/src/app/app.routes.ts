@@ -29,6 +29,27 @@ export const routes: Routes = [
         title: 'ShopZone',
       },
       {
+        path: 'checkout',
+        loadComponent: () =>
+          import('./features/checkout/checkout.component').then((m) => m.CheckoutComponent),
+        canActivate: [authGuard],
+        title: 'Checkout — ShopZone',
+      },
+      {
+        path: 'orders',
+        loadComponent: () =>
+          import('./features/orders/orders.component').then((m) => m.OrdersComponent),
+        canActivate: [authGuard],
+        title: 'My Orders — ShopZone',
+      },
+      {
+        path: 'orders/:id',
+        loadComponent: () =>
+          import('./features/orders/order-detail.component').then((m) => m.OrderDetailComponent),
+        canActivate: [authGuard],
+        title: 'Order Details — ShopZone',
+      },
+      {
         path: 'wishlist',
         loadComponent: () =>
           import('./features/wishlist/wishlist.component').then((m) => m.WishlistComponent),

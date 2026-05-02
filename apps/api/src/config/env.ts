@@ -18,9 +18,9 @@ const envSchema = z.object({
   // CORS
   CLIENT_URL: z.string().url().default('http://localhost:4200'),
 
-  // Stripe (optional at this stage)
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // Razorpay
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
