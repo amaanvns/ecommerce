@@ -63,12 +63,45 @@ export const routes: Routes = [
         canActivate: [authGuard],
         title: 'My Account',
       },
-      // Admin (placeholder — expanded in Phase 5)
+    ],
+  },
+
+  // --- Admin layout (sidebar, no navbar/footer) ---
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./layouts/admin-layout/admin-layout.component').then((m) => m.AdminLayoutComponent),
+    children: [
       {
-        path: 'admin',
-        canActivate: [authGuard, adminGuard],
-        loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
-        title: 'Admin Dashboard',
+        path: '',
+        loadComponent: () =>
+          import('./features/admin/dashboard/admin-dashboard.component').then(
+            (m) => m.AdminDashboardComponent,
+          ),
+        title: 'Dashboard — Admin',
+      },
+      {
+        path: 'orders',
+        loadComponent: () =>
+          import('./features/admin/orders/admin-orders.component').then(
+            (m) => m.AdminOrdersComponent,
+          ),
+        title: 'Orders — Admin',
+      },
+      {
+        path: 'products',
+        loadComponent: () =>
+          import('./features/admin/products/admin-products.component').then(
+            (m) => m.AdminProductsComponent,
+          ),
+        title: 'Products — Admin',
+      },
+      {
+        path: 'users',
+        loadComponent: () =>
+          import('./features/admin/users/admin-users.component').then((m) => m.AdminUsersComponent),
+        title: 'Users — Admin',
       },
     ],
   },
