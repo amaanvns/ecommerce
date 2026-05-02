@@ -19,6 +19,7 @@ export interface Order {
 
 export interface OrderItem {
   id: string;
+  variantId: string | null;
   productNameSnapshot: string;
   skuSnapshot: string | null;
   qty: number;
@@ -48,5 +49,9 @@ export class OrdersService {
 
   getOrder(id: string): Observable<{ data: OrderDetail }> {
     return this.http.get<{ data: OrderDetail }>(`${this.api}/orders/${id}`);
+  }
+
+  cancelOrder(id: string): Observable<{ data: Order }> {
+    return this.http.post<{ data: Order }>(`${this.api}/orders/${id}/cancel`, {});
   }
 }
