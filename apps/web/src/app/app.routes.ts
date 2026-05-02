@@ -15,6 +15,27 @@ export const routes: Routes = [
         title: 'ShopZone — Home',
       },
       {
+        path: 'products',
+        loadComponent: () =>
+          import('./features/catalog/catalog.component').then((m) => m.CatalogComponent),
+        title: 'Products — ShopZone',
+      },
+      {
+        path: 'products/:slug',
+        loadComponent: () =>
+          import('./features/product/product-detail.component').then(
+            (m) => m.ProductDetailComponent,
+          ),
+        title: 'ShopZone',
+      },
+      {
+        path: 'wishlist',
+        loadComponent: () =>
+          import('./features/wishlist/wishlist.component').then((m) => m.WishlistComponent),
+        canActivate: [authGuard],
+        title: 'My Wishlist — ShopZone',
+      },
+      {
         path: 'account',
         loadComponent: () =>
           import('./features/account/account.component').then((m) => m.AccountComponent),

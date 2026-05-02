@@ -6,6 +6,10 @@ import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { errorHandler } from './middleware/error.js';
 import { authRouter } from './modules/auth/auth.router.js';
+import { categoriesRouter } from './modules/categories/categories.router.js';
+import { productsRouter } from './modules/products/products.router.js';
+import { cartRouter } from './modules/cart/cart.router.js';
+import { wishlistRouter } from './modules/wishlist/wishlist.router.js';
 
 const app = express();
 
@@ -33,6 +37,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/v1/auth', authLimiter, authRouter);
+app.use('/api/v1/categories', categoriesRouter);
+app.use('/api/v1/products', productsRouter);
+app.use('/api/v1/cart', cartRouter);
+app.use('/api/v1/wishlist', wishlistRouter);
 
 app.use(errorHandler);
 

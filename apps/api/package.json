@@ -10,7 +10,8 @@
     "lint": "eslint src --ext .ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/db/seed/seed.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
