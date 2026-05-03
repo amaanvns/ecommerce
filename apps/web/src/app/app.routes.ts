@@ -98,6 +98,22 @@ export const routes: Routes = [
         title: 'Products — Admin',
       },
       {
+        path: 'products/new',
+        loadComponent: () =>
+          import('./features/admin/products/admin-product-form.component').then(
+            (m) => m.AdminProductFormComponent,
+          ),
+        title: 'New Product — Admin',
+      },
+      {
+        path: 'products/:id/edit',
+        loadComponent: () =>
+          import('./features/admin/products/admin-product-form.component').then(
+            (m) => m.AdminProductFormComponent,
+          ),
+        title: 'Edit Product — Admin',
+      },
+      {
         path: 'users',
         loadComponent: () =>
           import('./features/admin/users/admin-users.component').then((m) => m.AdminUsersComponent),

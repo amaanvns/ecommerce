@@ -182,10 +182,66 @@ adminRouter.get('/products', async (req, res, next) => {
   }
 });
 
+const createProductSchema = z.object({
+  name: z.string().min(1),
+  slug: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase letters, numbers, hyphens only'),
+  brand: z.string().optional(),
+  description: z.string().optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  isPublished: z.boolean().default(false),
+});
+
+adminRouter.post('/products', async (req, res, next) => {
+  try {
+    const body = createProductSchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.flatten() });
+      return;
+    }
+
+    const [created] = await db.insert(products).values(body.data).returning();
+    res.status(201).json({ data: created });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.get('/products/:id', async (req, res, next) => {
+  try {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, req.params.id), isNull(products.deletedAt)))
+      .limit(1);
+
+    if (!product) throw new AppError(404, 'Product not found');
+
+    const variants = await db
+      .select()
+      .from(productVariants)
+      .where(eq(productVariants.productId, product.id))
+      .orderBy(productVariants.createdAt);
+
+    res.json({ data: { ...product, variants } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 const updateProductSchema = z.object({
   isPublished: z.boolean().optional(),
   name: z.string().min(1).optional(),
+  slug: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
   brand: z.string().optional(),
+  description: z.string().optional(),
+  categoryId: z.string().uuid().nullable().optional(),
 });
 
 adminRouter.patch('/products/:id', async (req, res, next) => {
@@ -232,6 +288,104 @@ adminRouter.delete('/products/:id', async (req, res, next) => {
       .where(eq(products.id, product.id));
 
     res.json({ data: { id: product.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Product Variants ────────────────────────────────────────────────────────
+
+const variantSchema = z.object({
+  sku: z.string().min(1),
+  attributes: z.record(z.string()).default({}),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price'),
+  compareAtPrice: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/)
+    .nullable()
+    .optional(),
+  stockQty: z.number().int().min(0).default(0),
+  lowStockThreshold: z.number().int().min(0).default(5),
+});
+
+adminRouter.post('/products/:id/variants', async (req, res, next) => {
+  try {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, req.params.id), isNull(products.deletedAt)))
+      .limit(1);
+
+    if (!product) throw new AppError(404, 'Product not found');
+
+    const body = variantSchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.flatten() });
+      return;
+    }
+
+    const [created] = await db
+      .insert(productVariants)
+      .values({ ...body.data, productId: product.id })
+      .returning();
+
+    res.status(201).json({ data: created });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.patch('/products/:id/variants/:variantId', async (req, res, next) => {
+  try {
+    const body = variantSchema.partial().safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.flatten() });
+      return;
+    }
+
+    const [variant] = await db
+      .select()
+      .from(productVariants)
+      .where(
+        and(
+          eq(productVariants.id, req.params.variantId),
+          eq(productVariants.productId, req.params.id),
+        ),
+      )
+      .limit(1);
+
+    if (!variant) throw new AppError(404, 'Variant not found');
+
+    const [updated] = await db
+      .update(productVariants)
+      .set({ ...body.data, updatedAt: new Date() })
+      .where(eq(productVariants.id, variant.id))
+      .returning();
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.delete('/products/:id/variants/:variantId', async (req, res, next) => {
+  try {
+    const [variant] = await db
+      .select()
+      .from(productVariants)
+      .where(
+        and(
+          eq(productVariants.id, req.params.variantId),
+          eq(productVariants.productId, req.params.id),
+        ),
+      )
+      .limit(1);
+
+    if (!variant) throw new AppError(404, 'Variant not found');
+
+    await db.delete(productVariants).where(eq(productVariants.id, variant.id));
+
+    res.json({ data: { id: variant.id } });
   } catch (err) {
     next(err);
   }

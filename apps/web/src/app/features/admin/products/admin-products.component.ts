@@ -1,36 +1,44 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AdminService, AdminProductRow, PaginatedMeta } from '../../../core/services/admin.service';
 
 @Component({
   selector: 'app-admin-products',
-  imports: [CurrencyPipe, FormsModule],
+  imports: [CurrencyPipe, FormsModule, RouterLink],
   template: `
     <div class="p-8">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Products</h1>
-        <div class="relative">
-          <input
-            type="text"
-            [(ngModel)]="searchQuery"
-            (ngModelChange)="onSearch()"
-            placeholder="Search products…"
-            class="text-sm border border-gray-200 rounded-lg pl-9 pr-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56"
-          />
-          <svg
-            class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
+        <div class="flex items-center gap-3">
+          <a
+            routerLink="/admin/products/new"
+            class="text-sm bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors font-semibold"
+            >+ New Product</a
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+          <div class="relative">
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              (ngModelChange)="onSearch()"
+              placeholder="Search products…"
+              class="text-sm border border-gray-200 rounded-lg pl-9 pr-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56"
             />
-          </svg>
+            <svg
+              class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -102,13 +110,20 @@ import { AdminService, AdminProductRow, PaginatedMeta } from '../../../core/serv
                       </button>
                     </td>
                     <td class="px-4 py-3">
-                      <button
-                        (click)="deleteProduct(product)"
-                        [disabled]="deletingId() === product.id"
-                        class="text-xs text-red-500 hover:text-red-700 border border-red-100 hover:border-red-200 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
+                      <div class="flex items-center gap-2">
+                        <a
+                          [routerLink]="['/admin/products', product.id, 'edit']"
+                          class="text-xs text-indigo-600 border border-indigo-100 hover:border-indigo-200 px-2 py-1 rounded-lg transition-colors hover:bg-indigo-50"
+                          >Edit</a
+                        >
+                        <button
+                          (click)="deleteProduct(product)"
+                          [disabled]="deletingId() === product.id"
+                          class="text-xs text-red-500 hover:text-red-700 border border-red-100 hover:border-red-200 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 }

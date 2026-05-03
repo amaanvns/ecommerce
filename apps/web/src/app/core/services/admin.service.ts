@@ -36,6 +36,49 @@ export interface AdminProductRow {
   minPrice: string | null;
 }
 
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sku: string;
+  attributes: Record<string, string>;
+  price: string;
+  compareAtPrice: string | null;
+  stockQty: number;
+  lowStockThreshold: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminProductDetail {
+  id: string;
+  name: string;
+  slug: string;
+  brand: string | null;
+  description: string | null;
+  categoryId: string | null;
+  isPublished: boolean;
+  createdAt: string;
+  variants: ProductVariant[];
+}
+
+export interface VariantPayload {
+  sku: string;
+  attributes: Record<string, string>;
+  price: string;
+  compareAtPrice?: string | null;
+  stockQty: number;
+  lowStockThreshold?: number;
+}
+
+export interface ProductPayload {
+  name: string;
+  slug: string;
+  brand?: string;
+  description?: string;
+  categoryId?: string | null;
+  isPublished?: boolean;
+}
+
 export interface AdminUserRow {
   id: string;
   name: string;
@@ -90,15 +133,47 @@ export class AdminService {
     });
   }
 
+  createProduct(data: ProductPayload): Observable<{ data: AdminProductDetail }> {
+    return this.http.post<{ data: AdminProductDetail }>(`${this.api}/products`, data);
+  }
+
+  getProduct(id: string): Observable<{ data: AdminProductDetail }> {
+    return this.http.get<{ data: AdminProductDetail }>(`${this.api}/products/${id}`);
+  }
+
   updateProduct(
     id: string,
-    data: { isPublished?: boolean; name?: string; brand?: string },
-  ): Observable<{ data: AdminProductRow }> {
-    return this.http.patch<{ data: AdminProductRow }>(`${this.api}/products/${id}`, data);
+    data: Partial<ProductPayload>,
+  ): Observable<{ data: AdminProductDetail }> {
+    return this.http.patch<{ data: AdminProductDetail }>(`${this.api}/products/${id}`, data);
   }
 
   deleteProduct(id: string): Observable<{ data: { id: string } }> {
     return this.http.delete<{ data: { id: string } }>(`${this.api}/products/${id}`);
+  }
+
+  addVariant(productId: string, data: VariantPayload): Observable<{ data: ProductVariant }> {
+    return this.http.post<{ data: ProductVariant }>(
+      `${this.api}/products/${productId}/variants`,
+      data,
+    );
+  }
+
+  updateVariant(
+    productId: string,
+    variantId: string,
+    data: Partial<VariantPayload>,
+  ): Observable<{ data: ProductVariant }> {
+    return this.http.patch<{ data: ProductVariant }>(
+      `${this.api}/products/${productId}/variants/${variantId}`,
+      data,
+    );
+  }
+
+  deleteVariant(productId: string, variantId: string): Observable<{ data: { id: string } }> {
+    return this.http.delete<{ data: { id: string } }>(
+      `${this.api}/products/${productId}/variants/${variantId}`,
+    );
   }
 
   getUsers(
