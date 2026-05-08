@@ -1,54 +1,218 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { CatalogService, Category, ProductSummary } from '../../core/services/catalog.service';
+import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink],
+  imports: [RouterLink, ProductCardComponent],
   template: `
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <!-- Hero -->
-      <div class="text-center py-20 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl mb-12">
-        <h1 class="text-5xl font-bold text-gray-900 mb-4">Discover Amazing Products</h1>
-        <p class="text-lg text-gray-500 mb-8 max-w-xl mx-auto">
-          Shop the latest trends with fast delivery, easy returns, and unbeatable prices.
+    <!-- ════════════════════════════════════════════════════════════
+         HERO — generous, centered, restrained
+         ════════════════════════════════════════════════════════════ -->
+    <section class="container-edge pt-20 lg:pt-28 pb-16 lg:pb-24">
+      <div class="max-w-4xl">
+        <p class="label mb-8">New arrivals · 2026</p>
+        <h1 class="text-display font-light text-ink text-balance">
+          Considered objects, made well, kept long.
+        </h1>
+        <p class="mt-10 text-ink-500 max-w-md text-lg leading-relaxed">
+          A small, slow edit of pieces — designed to be lived with, mended, and passed on.
         </p>
-        <div class="flex items-center justify-center gap-4">
+        <div class="mt-12 flex items-center gap-8">
+          <a routerLink="/products" class="btn-primary">Shop Now</a>
           <a
             routerLink="/products"
-            class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+            class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
+            >Read our story</a
           >
-            Shop Now
-          </a>
-          @if (!auth.isAuthenticated()) {
+        </div>
+      </div>
+    </section>
+
+    <!-- Hero image — edge to edge, breathing -->
+    <section class="container-edge pb-24 lg:pb-32">
+      <div class="aspect-[16/9] lg:aspect-[21/9] hover-zoom bg-ink-50">
+        <img
+          src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=2200&q=80"
+          alt="The new collection"
+          class="w-full h-full object-cover"
+        />
+      </div>
+      <div class="mt-6 flex items-baseline justify-between text-sm">
+        <p class="text-ink">The Autumn Collection</p>
+        <p class="text-ink-400">Photographed in Lisbon</p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════
+         FEATURED — clean grid, lots of space
+         ════════════════════════════════════════════════════════════ -->
+    <section class="container-edge pb-24 lg:pb-32">
+      <div class="flex items-end justify-between mb-16">
+        <h2 class="text-4xl md:text-5xl font-light tracking-tighter">New arrivals</h2>
+        <a
+          routerLink="/products"
+          class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
+          >View all →</a
+        >
+      </div>
+
+      @if (loading()) {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+          @for (_ of [1, 2, 3, 4]; track $index) {
+            <div class="animate-pulse">
+              <div class="aspect-[4/5] bg-ink-100 mb-5"></div>
+              <div class="h-3 bg-ink-100 w-2/3 mb-2"></div>
+              <div class="h-3 bg-ink-100 w-1/3"></div>
+            </div>
+          }
+        </div>
+      } @else if (featured().length > 0) {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-16">
+          @for (p of featured(); track p.id) {
+            <app-product-card [product]="p" />
+          }
+        </div>
+      }
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════
+         CATEGORIES — clean two-up grid
+         ════════════════════════════════════════════════════════════ -->
+    @if (categories().length > 0) {
+      <section class="container-edge pb-24 lg:pb-32">
+        <h2 class="text-4xl md:text-5xl font-light tracking-tighter mb-16 max-w-2xl">
+          Browse by category.
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+          @for (cat of categories().slice(0, 4); track cat.id; let i = $index) {
             <a
-              routerLink="/auth/register"
-              class="border border-gray-300 text-gray-700 px-8 py-3 rounded-xl font-semibold hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+              [routerLink]="['/products']"
+              [queryParams]="{ category: cat.slug }"
+              class="group block"
             >
-              Create Account
+              <div class="aspect-[4/3] hover-zoom bg-ink-50 mb-5">
+                <img
+                  [src]="cat.imageUrl || categoryFallback(i)"
+                  [alt]="cat.name"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div class="flex items-baseline justify-between">
+                <h3
+                  class="text-2xl font-light tracking-tight group-hover:text-ink-500 transition-colors"
+                >
+                  {{ cat.name }}
+                </h3>
+                <span class="text-sm text-ink-400 group-hover:text-ink transition-colors"
+                  >Shop →</span
+                >
+              </div>
             </a>
           }
         </div>
-      </div>
+      </section>
+    }
 
-      <!-- Feature cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        @for (feat of features; track feat.title) {
-          <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
-            <div class="text-4xl mb-3">{{ feat.icon }}</div>
-            <h3 class="font-semibold text-gray-900 mb-1">{{ feat.title }}</h3>
-            <p class="text-sm text-gray-500">{{ feat.desc }}</p>
+    <!-- ════════════════════════════════════════════════════════════
+         PHILOSOPHY — quiet split section
+         ════════════════════════════════════════════════════════════ -->
+    <section class="container-edge py-24 lg:py-40">
+      <div class="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+        <div class="lg:col-span-5 lg:col-start-1">
+          <div class="aspect-[4/5] hover-zoom bg-ink-50">
+            <img
+              src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1000&q=80"
+              alt="Atelier"
+              class="w-full h-full object-cover"
+            />
           </div>
-        }
+        </div>
+        <div class="lg:col-span-6 lg:col-start-7">
+          <p class="label mb-8">Our Approach</p>
+          <h2
+            class="text-4xl md:text-5xl lg:text-6xl font-light tracking-tighter leading-[1.05] text-balance"
+          >
+            We don't chase seasons. We choose things that last.
+          </h2>
+          <p class="mt-10 text-ink-500 max-w-md leading-relaxed">
+            Every piece is selected by a small team. We work directly with makers, in small runs,
+            with full traceability — and stand behind everything we sell, for as long as you own it.
+          </p>
+
+          <ul class="mt-12 divide-y divide-ink-200 border-t border-ink-200">
+            @for (feat of features; track feat.title) {
+              <li class="py-5 flex items-baseline justify-between gap-6">
+                <span class="text-base text-ink">{{ feat.title }}</span>
+                <span class="text-sm text-ink-500 text-right max-w-xs">{{ feat.desc }}</span>
+              </li>
+            }
+          </ul>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════
+         CTA — quiet, full-width, no bombast
+         ════════════════════════════════════════════════════════════ -->
+    <section class="border-t border-ink-200">
+      <div class="container-edge py-32 lg:py-40 text-center">
+        <h2
+          class="text-4xl md:text-6xl lg:text-7xl font-light tracking-tighter text-balance max-w-3xl mx-auto leading-[1.05]"
+        >
+          The next thing you'll keep forever.
+        </h2>
+        <div class="mt-14 flex items-center justify-center gap-8">
+          <a routerLink="/products" class="btn-primary">Shop The Collection</a>
+          @if (!auth.isAuthenticated()) {
+            <a
+              routerLink="/auth/register"
+              class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
+              >Become a member →</a
+            >
+          }
+        </div>
+      </div>
+    </section>
   `,
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   readonly auth = inject(AuthService);
+  private readonly catalog = inject(CatalogService);
+
+  readonly categories = signal<Category[]>([]);
+  readonly featured = signal<ProductSummary[]>([]);
+  readonly loading = signal(true);
+
   readonly features = [
-    { icon: '🚀', title: 'Fast Delivery', desc: 'Get your orders delivered in 2–5 business days.' },
-    { icon: '🔒', title: 'Secure Payments', desc: 'Your payment information is always protected.' },
-    { icon: '🔄', title: 'Easy Returns', desc: '30-day hassle-free return policy on all items.' },
+    { title: 'Considered selection', desc: 'Vetted by our team — every piece' },
+    { title: 'Made with care', desc: 'Small batch, traceable origins' },
+    { title: 'Lasting support', desc: '30-day returns, lifetime repair' },
   ];
+
+  private readonly fallbacks = [
+    'https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=1200&q=80',
+    'https://images.unsplash.com/photo-1551803091-e20673f15770?w=1200&q=80',
+    'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1200&q=80',
+    'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&q=80',
+  ];
+
+  categoryFallback(i: number): string {
+    return this.fallbacks[i % this.fallbacks.length];
+  }
+
+  ngOnInit(): void {
+    this.catalog.getCategories().subscribe((res) => this.categories.set(res.data));
+    this.catalog.getProducts({ limit: 4, sort: 'newest' }).subscribe({
+      next: (res) => {
+        this.featured.set(res.data);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
 }

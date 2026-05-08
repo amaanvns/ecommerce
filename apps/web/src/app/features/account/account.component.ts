@@ -1,43 +1,44 @@
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-account',
+  imports: [RouterLink],
   template: `
-    <div class="max-w-3xl mx-auto px-4 py-10">
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">My Account</h1>
-      <div
-        class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center gap-5"
-      >
-        <div
-          class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600 text-xl"
-        >
-          {{ initials() }}
-        </div>
-        <div>
-          <p class="font-semibold text-gray-900 text-lg">{{ auth.currentUser()?.name }}</p>
-          <p class="text-sm text-gray-500">{{ auth.currentUser()?.email }}</p>
-          <span
-            class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium"
-            [class]="roleBadge()"
+    <section class="container-edge pt-20 pb-12 lg:pt-28 lg:pb-16 max-w-5xl">
+      <h1 class="text-4xl md:text-5xl font-light tracking-tighter">Hello, {{ firstName() }}.</h1>
+      <p class="mt-3 text-ink-500">{{ auth.currentUser()?.email }}</p>
+      @if (isAdmin()) {
+        <span class="mt-4 inline-block text-sm text-ink-500">Administrator</span>
+      }
+    </section>
+
+    <div class="container-edge pb-24 max-w-5xl">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        @for (item of menuItems; track item.label) {
+          <a
+            [routerLink]="item.route"
+            class="group block p-7 bg-ink-50/60 hover:bg-ink-50 transition-colors rounded-lg"
           >
-            {{ auth.currentUser()?.role }}
-          </span>
-        </div>
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-lg text-ink">{{ item.label }}</p>
+                <p class="text-sm text-ink-500 mt-1">{{ item.desc }}</p>
+              </div>
+              <span class="text-ink-400 group-hover:text-ink transition-colors">→</span>
+            </div>
+          </a>
+        }
       </div>
 
-      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        @for (item of menuItems; track item.label) {
-          <div
-            class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 hover:border-indigo-200 cursor-pointer transition-colors"
-          >
-            <span class="text-2xl">{{ item.icon }}</span>
-            <div>
-              <p class="font-medium text-sm text-gray-900">{{ item.label }}</p>
-              <p class="text-xs text-gray-400">{{ item.desc }}</p>
-            </div>
-          </div>
-        }
+      <div class="mt-12 pt-8 border-t border-ink-200 flex justify-end">
+        <button
+          (click)="auth.logout()"
+          class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
+        >
+          Sign out
+        </button>
       </div>
     </div>
   `,
@@ -45,25 +46,19 @@ import { AuthService } from '../../core/services/auth.service';
 export class AccountComponent {
   readonly auth = inject(AuthService);
 
-  initials() {
-    return (this.auth.currentUser()?.name ?? '')
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  firstName(): string {
+    return (this.auth.currentUser()?.name ?? '').split(' ')[0];
   }
 
-  roleBadge() {
+  isAdmin(): boolean {
     const role = this.auth.currentUser()?.role;
-    if (role === 'admin' || role === 'super_admin') return 'bg-purple-100 text-purple-700';
-    return 'bg-green-100 text-green-700';
+    return role === 'admin' || role === 'super_admin';
   }
 
   readonly menuItems = [
-    { icon: '📦', label: 'My Orders', desc: 'Track and manage your orders' },
-    { icon: '📍', label: 'Addresses', desc: 'Manage your shipping addresses' },
-    { icon: '❤️', label: 'Wishlist', desc: 'Items you love' },
-    { icon: '⚙️', label: 'Settings', desc: 'Account preferences' },
+    { label: 'Orders', desc: 'Track and manage your orders', route: '/orders' },
+    { label: 'Saved items', desc: 'Products you saved for later', route: '/wishlist' },
+    { label: 'Addresses', desc: 'Manage your shipping addresses', route: '/account' },
+    { label: 'Settings', desc: 'Preferences and password', route: '/account' },
   ];
 }

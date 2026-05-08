@@ -2,7 +2,18 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { eq, desc, count, sum, sql, ilike, and, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { users, orders, products, productVariants, categories } from '../../db/schema/index.js';
+import {
+  users,
+  orders,
+  orderItems,
+  products,
+  productVariants,
+  productImages,
+  categories,
+  reviews,
+  coupons,
+} from '../../db/schema/index.js';
+import { gte, lte } from 'drizzle-orm';
 import { authenticate, requireRole } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
 
@@ -219,13 +230,20 @@ adminRouter.get('/products/:id', async (req, res, next) => {
 
     if (!product) throw new AppError(404, 'Product not found');
 
-    const variants = await db
-      .select()
-      .from(productVariants)
-      .where(eq(productVariants.productId, product.id))
-      .orderBy(productVariants.createdAt);
+    const [variants, images] = await Promise.all([
+      db
+        .select()
+        .from(productVariants)
+        .where(eq(productVariants.productId, product.id))
+        .orderBy(productVariants.createdAt),
+      db
+        .select()
+        .from(productImages)
+        .where(eq(productImages.productId, product.id))
+        .orderBy(productImages.sortOrder),
+    ]);
 
-    res.json({ data: { ...product, variants } });
+    res.json({ data: { ...product, variants, images } });
   } catch (err) {
     next(err);
   }
@@ -391,6 +409,139 @@ adminRouter.delete('/products/:id/variants/:variantId', async (req, res, next) =
   }
 });
 
+// ─── Product images ─────────────────────────────────────────────────────────
+
+const imageBodySchema = z.object({
+  url: z.string().url().max(2048),
+  alt: z.string().max(255).optional().or(z.literal('')),
+});
+
+adminRouter.post('/products/:id/images', async (req, res, next) => {
+  try {
+    const parsed = imageBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    const [product] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.id, req.params.id), isNull(products.deletedAt)))
+      .limit(1);
+    if (!product) throw new AppError(404, 'Product not found');
+
+    // Append to end: sortOrder = (max + 1)
+    const [{ maxOrder }] = await db
+      .select({ maxOrder: sql<number>`COALESCE(MAX(${productImages.sortOrder}), -1)` })
+      .from(productImages)
+      .where(eq(productImages.productId, product.id));
+
+    const [created] = await db
+      .insert(productImages)
+      .values({
+        productId: product.id,
+        url: parsed.data.url,
+        alt: parsed.data.alt?.trim() || null,
+        sortOrder: Number(maxOrder) + 1,
+      })
+      .returning();
+
+    res.status(201).json({ data: created });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const updateImageSchema = z.object({
+  alt: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int().min(0).optional(),
+});
+
+adminRouter.patch('/products/:id/images/:imageId', async (req, res, next) => {
+  try {
+    const parsed = updateImageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    const [image] = await db
+      .select()
+      .from(productImages)
+      .where(
+        and(eq(productImages.id, req.params.imageId), eq(productImages.productId, req.params.id)),
+      )
+      .limit(1);
+    if (!image) throw new AppError(404, 'Image not found');
+
+    const [updated] = await db
+      .update(productImages)
+      .set({
+        ...(parsed.data.alt !== undefined ? { alt: parsed.data.alt?.trim() || null } : {}),
+        ...(parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),
+      })
+      .where(eq(productImages.id, image.id))
+      .returning();
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const reorderSchema = z.object({
+  order: z.array(z.string().uuid()).min(1),
+});
+
+// Reorder all images at once. Body: { order: [imageId, imageId, ...] }
+adminRouter.post('/products/:id/images/reorder', async (req, res, next) => {
+  try {
+    const parsed = reorderSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    await Promise.all(
+      parsed.data.order.map((id, index) =>
+        db
+          .update(productImages)
+          .set({ sortOrder: index })
+          .where(and(eq(productImages.id, id), eq(productImages.productId, req.params.id))),
+      ),
+    );
+
+    const rows = await db
+      .select()
+      .from(productImages)
+      .where(eq(productImages.productId, req.params.id))
+      .orderBy(productImages.sortOrder);
+
+    res.json({ data: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.delete('/products/:id/images/:imageId', async (req, res, next) => {
+  try {
+    const [image] = await db
+      .select({ id: productImages.id })
+      .from(productImages)
+      .where(
+        and(eq(productImages.id, req.params.imageId), eq(productImages.productId, req.params.id)),
+      )
+      .limit(1);
+    if (!image) throw new AppError(404, 'Image not found');
+
+    await db.delete(productImages).where(eq(productImages.id, image.id));
+    res.json({ data: { id: image.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 adminRouter.get('/users', async (req, res, next) => {
@@ -448,6 +599,457 @@ adminRouter.patch('/users/:id/block', async (req, res, next) => {
       .returning();
 
     res.json({ data: { id: updated.id, isBlocked: updated.isBlocked } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Reviews moderation ─────────────────────────────────────────────────────
+
+adminRouter.get('/reviews', async (req, res, next) => {
+  try {
+    const page = Number(req.query['page'] ?? 1);
+    const limit = Number(req.query['limit'] ?? 20);
+    const status = req.query['status'] as string | undefined;
+    const offset = (page - 1) * limit;
+
+    const where = status ? [eq(reviews.status, status as never)] : [];
+
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select({
+          id: reviews.id,
+          rating: reviews.rating,
+          title: reviews.title,
+          body: reviews.body,
+          status: reviews.status,
+          createdAt: reviews.createdAt,
+          productId: reviews.productId,
+          productName: products.name,
+          productSlug: products.slug,
+          authorName: users.name,
+          authorEmail: users.email,
+        })
+        .from(reviews)
+        .innerJoin(products, eq(reviews.productId, products.id))
+        .innerJoin(users, eq(reviews.userId, users.id))
+        .where(and(...where))
+        .orderBy(desc(reviews.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ total: count() })
+        .from(reviews)
+        .where(and(...where)),
+    ]);
+
+    res.json({
+      data: rows,
+      meta: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const moderateSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected']),
+});
+
+adminRouter.patch('/reviews/:id', async (req, res, next) => {
+  try {
+    const body = moderateSchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.flatten() });
+      return;
+    }
+
+    const [existing] = await db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(eq(reviews.id, req.params.id))
+      .limit(1);
+    if (!existing) throw new AppError(404, 'Review not found');
+
+    const [updated] = await db
+      .update(reviews)
+      .set({ status: body.data.status, updatedAt: new Date() })
+      .where(eq(reviews.id, existing.id))
+      .returning();
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.delete('/reviews/:id', async (req, res, next) => {
+  try {
+    const [existing] = await db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(eq(reviews.id, req.params.id))
+      .limit(1);
+    if (!existing) throw new AppError(404, 'Review not found');
+
+    await db.delete(reviews).where(eq(reviews.id, existing.id));
+    res.json({ data: { id: existing.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Coupons ─────────────────────────────────────────────────────────────────
+
+adminRouter.get('/coupons', async (req, res, next) => {
+  try {
+    const page = Number(req.query['page'] ?? 1);
+    const limit = Number(req.query['limit'] ?? 20);
+    const offset = (page - 1) * limit;
+
+    const [rows, [{ total }]] = await Promise.all([
+      db.select().from(coupons).orderBy(desc(coupons.createdAt)).limit(limit).offset(offset),
+      db.select({ total: count() }).from(coupons),
+    ]);
+
+    res.json({
+      data: rows,
+      meta: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const couponBodySchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(2)
+    .max(50)
+    .regex(/^[A-Za-z0-9_-]+$/, 'Use letters, numbers, dashes or underscores only'),
+  type: z.enum(['percent', 'fixed']),
+  value: z.number().positive(),
+  minSubtotal: z.number().nonnegative().optional().nullable(),
+  maxDiscount: z.number().nonnegative().optional().nullable(),
+  usageLimit: z.number().int().positive().optional().nullable(),
+  firstOrderOnly: z.boolean().optional(),
+  startsAt: z.string().datetime().optional().nullable(),
+  endsAt: z.string().datetime().optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
+adminRouter.post('/coupons', async (req, res, next) => {
+  try {
+    const parsed = couponBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    const data = parsed.data;
+
+    const code = data.code.toUpperCase();
+    const [existing] = await db
+      .select({ id: coupons.id })
+      .from(coupons)
+      .where(eq(coupons.code, code))
+      .limit(1);
+    if (existing) throw new AppError(409, 'A coupon with this code already exists.');
+
+    const [created] = await db
+      .insert(coupons)
+      .values({
+        code,
+        type: data.type,
+        value: data.value.toFixed(2),
+        minSubtotal: data.minSubtotal != null ? data.minSubtotal.toFixed(2) : null,
+        maxDiscount: data.maxDiscount != null ? data.maxDiscount.toFixed(2) : null,
+        usageLimit: data.usageLimit ?? null,
+        firstOrderOnly: data.firstOrderOnly ?? false,
+        startsAt: data.startsAt ? new Date(data.startsAt) : null,
+        endsAt: data.endsAt ? new Date(data.endsAt) : null,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+
+    res.status(201).json({ data: created });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.patch('/coupons/:id', async (req, res, next) => {
+  try {
+    const parsed = couponBodySchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    const data = parsed.data;
+
+    const [existing] = await db
+      .select()
+      .from(coupons)
+      .where(eq(coupons.id, req.params.id))
+      .limit(1);
+    if (!existing) throw new AppError(404, 'Coupon not found');
+
+    // If code is changing, check for collision
+    if (data.code && data.code.toUpperCase() !== existing.code) {
+      const newCode = data.code.toUpperCase();
+      const [collision] = await db
+        .select({ id: coupons.id })
+        .from(coupons)
+        .where(eq(coupons.code, newCode))
+        .limit(1);
+      if (collision) throw new AppError(409, 'A coupon with this code already exists.');
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (data.code !== undefined) updates['code'] = data.code.toUpperCase();
+    if (data.type !== undefined) updates['type'] = data.type;
+    if (data.value !== undefined) updates['value'] = data.value.toFixed(2);
+    if (data.minSubtotal !== undefined)
+      updates['minSubtotal'] = data.minSubtotal != null ? data.minSubtotal.toFixed(2) : null;
+    if (data.maxDiscount !== undefined)
+      updates['maxDiscount'] = data.maxDiscount != null ? data.maxDiscount.toFixed(2) : null;
+    if (data.usageLimit !== undefined) updates['usageLimit'] = data.usageLimit;
+    if (data.firstOrderOnly !== undefined) updates['firstOrderOnly'] = data.firstOrderOnly;
+    if (data.startsAt !== undefined)
+      updates['startsAt'] = data.startsAt ? new Date(data.startsAt) : null;
+    if (data.endsAt !== undefined) updates['endsAt'] = data.endsAt ? new Date(data.endsAt) : null;
+    if (data.isActive !== undefined) updates['isActive'] = data.isActive;
+
+    const [updated] = await db
+      .update(coupons)
+      .set(updates)
+      .where(eq(coupons.id, existing.id))
+      .returning();
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.delete('/coupons/:id', async (req, res, next) => {
+  try {
+    const [existing] = await db
+      .select({ id: coupons.id })
+      .from(coupons)
+      .where(eq(coupons.id, req.params.id))
+      .limit(1);
+    if (!existing) throw new AppError(404, 'Coupon not found');
+
+    await db.delete(coupons).where(eq(coupons.id, existing.id));
+    res.json({ data: { id: existing.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+// GET /admin/analytics/sales-trend?days=30
+// Returns daily revenue + order count for paid orders in the window.
+adminRouter.get('/analytics/sales-trend', async (req, res, next) => {
+  try {
+    const days = Math.min(Math.max(Number(req.query['days'] ?? 30), 7), 365);
+    const since = new Date();
+    since.setUTCHours(0, 0, 0, 0);
+    since.setUTCDate(since.getUTCDate() - (days - 1));
+
+    const rows = await db
+      .select({
+        date: sql<string>`TO_CHAR(${orders.placedAt}::date, 'YYYY-MM-DD')`,
+        revenue: sql<string>`COALESCE(SUM(${orders.total}::numeric), 0)`,
+        orderCount: count(),
+      })
+      .from(orders)
+      .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.placedAt, since)))
+      .groupBy(sql`${orders.placedAt}::date`)
+      .orderBy(sql`${orders.placedAt}::date`);
+
+    const map = new Map(rows.map((r) => [r.date, r]));
+
+    // Fill gaps so the chart has a continuous series
+    const series: { date: string; revenue: number; orderCount: number }[] = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(since);
+      d.setUTCDate(d.getUTCDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      const found = map.get(key);
+      series.push({
+        date: key,
+        revenue: found ? Number(found.revenue) : 0,
+        orderCount: found ? Number(found.orderCount) : 0,
+      });
+    }
+
+    res.json({ data: series });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /admin/analytics/top-products?limit=10
+adminRouter.get('/analytics/top-products', async (req, res, next) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query['limit'] ?? 10), 1), 50);
+
+    const rows = await db
+      .select({
+        productId: products.id,
+        productName: products.name,
+        productSlug: products.slug,
+        unitsSold: sql<string>`COALESCE(SUM(${orderItems.qty}), 0)`,
+        revenue: sql<string>`COALESCE(SUM(${orderItems.lineTotal}::numeric), 0)`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(eq(orders.paymentStatus, 'paid'))
+      .groupBy(products.id)
+      .orderBy(sql`SUM(${orderItems.qty}) DESC`)
+      .limit(limit);
+
+    res.json({
+      data: rows.map((r) => ({
+        productId: r.productId,
+        productName: r.productName,
+        productSlug: r.productSlug,
+        unitsSold: Number(r.unitsSold),
+        revenue: Number(r.revenue),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /admin/analytics/sales-by-category
+adminRouter.get('/analytics/sales-by-category', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        categoryId: categories.id,
+        categoryName: categories.name,
+        revenue: sql<string>`COALESCE(SUM(${orderItems.lineTotal}::numeric), 0)`,
+        unitsSold: sql<string>`COALESCE(SUM(${orderItems.qty}), 0)`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .innerJoin(categories, eq(products.categoryId, categories.id))
+      .where(eq(orders.paymentStatus, 'paid'))
+      .groupBy(categories.id)
+      .orderBy(sql`SUM(${orderItems.lineTotal}::numeric) DESC`);
+
+    res.json({
+      data: rows.map((r) => ({
+        categoryId: r.categoryId,
+        categoryName: r.categoryName,
+        revenue: Number(r.revenue),
+        unitsSold: Number(r.unitsSold),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── CSV order export ───────────────────────────────────────────────────────
+// GET /admin/exports/orders.csv?from=YYYY-MM-DD&to=YYYY-MM-DD&status=paid
+
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const s = String(value);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+adminRouter.get('/exports/orders.csv', async (req, res, next) => {
+  try {
+    const from = req.query['from'] as string | undefined;
+    const to = req.query['to'] as string | undefined;
+    const status = req.query['status'] as string | undefined;
+
+    const where = [];
+    if (from) where.push(gte(orders.placedAt, new Date(from)));
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setUTCHours(23, 59, 59, 999);
+      where.push(lte(orders.placedAt, toDate));
+    }
+    if (status === 'paid') where.push(eq(orders.paymentStatus, 'paid'));
+
+    const rows = await db
+      .select({
+        orderNumber: orders.orderNumber,
+        placedAt: orders.placedAt,
+        status: orders.status,
+        paymentStatus: orders.paymentStatus,
+        subtotal: orders.subtotal,
+        discount: orders.discount,
+        total: orders.total,
+        currency: orders.currency,
+        userName: users.name,
+        userEmail: users.email,
+        shippingAddress: orders.shippingAddress,
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.userId, users.id))
+      .where(where.length > 0 ? and(...where) : undefined)
+      .orderBy(desc(orders.placedAt));
+
+    const header = [
+      'order_number',
+      'placed_at',
+      'status',
+      'payment_status',
+      'subtotal',
+      'discount',
+      'total',
+      'currency',
+      'customer_name',
+      'customer_email',
+      'shipping_city',
+      'shipping_state',
+      'shipping_postal_code',
+    ];
+
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      const addr = (r.shippingAddress as Record<string, string>) ?? {};
+      lines.push(
+        [
+          csvEscape(r.orderNumber),
+          csvEscape(r.placedAt.toISOString()),
+          csvEscape(r.status),
+          csvEscape(r.paymentStatus),
+          csvEscape(r.subtotal),
+          csvEscape(r.discount),
+          csvEscape(r.total),
+          csvEscape(r.currency),
+          csvEscape(r.userName),
+          csvEscape(r.userEmail),
+          csvEscape(addr['city']),
+          csvEscape(addr['state']),
+          csvEscape(addr['postalCode']),
+        ].join(','),
+      );
+    }
+
+    const csv = lines.join('\n');
+    const filename = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
   } catch (err) {
     next(err);
   }

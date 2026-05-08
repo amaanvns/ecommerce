@@ -9,24 +9,21 @@ import { AuthService } from '../../../core/services/auth.service';
   selector: 'app-product-card',
   imports: [RouterLink, CurrencyPipe],
   template: `
-    <a
-      [routerLink]="['/products', product().slug]"
-      class="group flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
-    >
+    <a [routerLink]="['/products', product().slug]" class="group block">
       <!-- Image -->
-      <div class="relative aspect-square bg-gray-50 overflow-hidden">
+      <div class="relative aspect-[4/5] bg-ink-50 hover-zoom mb-5">
         @if (product().image?.url) {
           <img
             [src]="product().image!.url"
             [alt]="product().image!.alt ?? product().name"
-            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            class="w-full h-full object-cover"
             loading="lazy"
           />
         } @else {
-          <div class="w-full h-full flex items-center justify-center text-gray-300">
+          <div class="w-full h-full flex items-center justify-center text-ink-300">
             <svg
-              width="64"
-              height="64"
+              width="36"
+              height="36"
               fill="none"
               stroke="currentColor"
               stroke-width="1"
@@ -35,33 +32,25 @@ import { AuthService } from '../../../core/services/auth.service';
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159"
               />
             </svg>
           </div>
         }
-        @if (hasDiscount()) {
-          <span
-            class="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full"
-          >
-            {{ discountPct() }}% OFF
-          </span>
-        }
+
         @if (auth.isAuthenticated()) {
           <button
             (click)="toggleWishlist($event)"
-            class="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
-            [title]="wishlist.has(product().id) ? 'Remove from wishlist' : 'Add to wishlist'"
+            class="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-paper/90 backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity hover:bg-paper"
+            [title]="wishlist.has(product().id) ? 'Remove' : 'Save'"
           >
             <svg
-              width="16"
-              height="16"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               [attr.fill]="wishlist.has(product().id) ? 'currentColor' : 'none'"
               stroke="currentColor"
               stroke-width="1.5"
-              [class.text-red-500]="wishlist.has(product().id)"
-              [class.text-gray-400]="!wishlist.has(product().id)"
             >
               <path
                 stroke-linecap="round"
@@ -73,25 +62,22 @@ import { AuthService } from '../../../core/services/auth.service';
         }
       </div>
 
-      <!-- Info -->
-      <div class="p-4 flex flex-col gap-1 flex-1">
-        @if (product().brand) {
-          <p class="text-xs text-gray-400 uppercase tracking-wide">{{ product().brand }}</p>
-        }
-        <h3 class="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">
+      <!-- Info — minimal -->
+      <div class="space-y-1">
+        <h3 class="text-base text-ink leading-snug">
           {{ product().name }}
         </h3>
-
-        <div class="mt-auto pt-2 flex items-baseline gap-2">
-          <span class="text-base font-bold text-gray-900">
-            {{ +(product().minPrice ?? 0) | currency }}
-          </span>
+        @if (product().brand) {
+          <p class="text-sm text-ink-400">{{ product().brand }}</p>
+        }
+        <p class="text-sm text-ink tabular pt-1">
+          {{ +(product().minPrice ?? 0) | currency }}
           @if (hasDiscount()) {
-            <span class="text-sm text-gray-400 line-through">
+            <span class="ml-2 text-ink-400 line-through text-xs">
               {{ +product().compareAtPrice! | currency }}
             </span>
           }
-        </div>
+        </p>
       </div>
     </a>
   `,
@@ -105,13 +91,6 @@ export class ProductCardComponent {
     return (
       !!this.product().compareAtPrice && +this.product().compareAtPrice! > +this.product().minPrice!
     );
-  }
-
-  discountPct(): number {
-    if (!this.hasDiscount()) return 0;
-    const orig = +this.product().compareAtPrice!;
-    const curr = +this.product().minPrice!;
-    return Math.round(((orig - curr) / orig) * 100);
   }
 
   toggleWishlist(event: Event): void {

@@ -13,6 +13,8 @@ import { wishlistRouter } from './modules/wishlist/wishlist.router.js';
 import { checkoutRouter } from './modules/checkout/checkout.router.js';
 import { ordersRouter } from './modules/orders/orders.router.js';
 import { adminRouter } from './modules/admin/admin.router.js';
+import { reviewsRouter } from './modules/reviews/reviews.router.js';
+import { couponsRouter } from './modules/coupons/coupons.router.js';
 
 const app = express();
 
@@ -46,6 +48,8 @@ app.use('/api/v1/cart', cartRouter);
 app.use('/api/v1/wishlist', wishlistRouter);
 app.use('/api/v1/checkout', checkoutRouter);
 app.use('/api/v1/orders', ordersRouter);
+app.use('/api/v1/reviews', reviewsRouter);
+app.use('/api/v1/coupons', couponsRouter);
 app.use('/api/v1/admin', adminRouter);
 
 app.use(errorHandler);

@@ -19,118 +19,89 @@ function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   selector: 'app-register',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-      <h1 class="text-2xl font-bold text-gray-900 mb-1">Create an account</h1>
-      <p class="text-sm text-gray-500 mb-6">Join thousands of happy customers</p>
+    <div class="w-full">
+      <h1 class="text-4xl md:text-5xl font-light tracking-tight">Create account</h1>
+      <p class="mt-3 text-ink-500">Save items, track orders, receive early access.</p>
 
       @if (error()) {
-        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div
+          class="mt-8 bg-ink-50 border border-ink-200 px-4 py-3 text-sm text-ink animate-fade-in"
+        >
           {{ error() }}
         </div>
       }
 
-      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+      <form [formGroup]="form" (ngSubmit)="submit()" class="mt-10 space-y-6">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <label class="label-input">Full name</label>
           <input
             formControlName="name"
             type="text"
-            placeholder="John Doe"
-            class="w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors
-              focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            [class.border-red-400]="isInvalid('name')"
-            [class.border-gray-300]="!isInvalid('name')"
+            placeholder="Jane Smith"
+            class="input-clean"
+            [class.border-ink]="isInvalid('name')"
           />
           @if (isInvalid('name')) {
-            <p class="mt-1 text-xs text-red-600">Name must be at least 2 characters</p>
+            <p class="mt-2 text-xs text-ink-500">Must be at least 2 characters</p>
           }
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label class="label-input">Email</label>
           <input
             formControlName="email"
             type="email"
             placeholder="you@example.com"
-            class="w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors
-              focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            [class.border-red-400]="isInvalid('email')"
-            [class.border-gray-300]="!isInvalid('email')"
+            class="input-clean"
+            [class.border-ink]="isInvalid('email')"
           />
           @if (isInvalid('email')) {
-            <p class="mt-1 text-xs text-red-600">Enter a valid email address</p>
+            <p class="mt-2 text-xs text-ink-500">Enter a valid email address</p>
           }
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label class="label-input">Password</label>
           <input
             formControlName="password"
             type="password"
-            placeholder="Min. 8 characters"
-            class="w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors
-              focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            [class.border-red-400]="isInvalid('password')"
-            [class.border-gray-300]="!isInvalid('password')"
+            placeholder="Minimum 8 characters"
+            class="input-clean"
+            [class.border-ink]="isInvalid('password')"
           />
           @if (isInvalid('password')) {
-            <p class="mt-1 text-xs text-red-600">Password must be at least 8 characters</p>
+            <p class="mt-2 text-xs text-ink-500">Must be at least 8 characters</p>
           }
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+          <label class="label-input">Confirm password</label>
           <input
             formControlName="confirmPassword"
             type="password"
             placeholder="Re-enter password"
-            class="w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors
-              focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            [class.border-red-400]="showMismatch()"
-            [class.border-gray-300]="!showMismatch()"
+            class="input-clean"
+            [class.border-ink]="showMismatch()"
           />
           @if (showMismatch()) {
-            <p class="mt-1 text-xs text-red-600">Passwords do not match</p>
+            <p class="mt-2 text-xs text-ink-500">Passwords do not match</p>
           }
         </div>
 
-        <button
-          type="submit"
-          [disabled]="loading()"
-          class="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold
-            hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-            disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          @if (loading()) {
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            Creating account…
-          } @else {
-            Create Account
-          }
+        <button type="submit" [disabled]="loading()" class="btn-primary w-full mt-2">
+          {{ loading() ? 'Creating account…' : 'Create account' }}
         </button>
       </form>
 
-      <p class="mt-4 text-center text-xs text-gray-400">
+      <p class="mt-6 text-xs text-ink-400 text-center leading-relaxed">
         By signing up you agree to our
-        <a href="#" class="text-indigo-600 hover:underline">Terms</a> and
-        <a href="#" class="text-indigo-600 hover:underline">Privacy Policy</a>.
+        <a href="#" class="link-underline text-ink-500">Terms</a> and
+        <a href="#" class="link-underline text-ink-500">Privacy Policy</a>.
       </p>
 
-      <p class="mt-4 text-center text-sm text-gray-500">
-        Already have an account?
-        <a routerLink="/auth/login" class="text-indigo-600 font-medium hover:underline ml-1"
-          >Sign in</a
-        >
+      <p class="mt-10 text-center text-sm text-ink-500">
+        Already a member?
+        <a routerLink="/auth/login" class="ml-1 text-ink link-underline">Sign in</a>
       </p>
     </div>
   `,

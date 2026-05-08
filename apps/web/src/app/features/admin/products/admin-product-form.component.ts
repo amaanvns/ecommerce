@@ -2,7 +2,12 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
-import { AdminService, ProductVariant, VariantPayload } from '../../../core/services/admin.service';
+import {
+  AdminService,
+  ProductImage,
+  ProductVariant,
+  VariantPayload,
+} from '../../../core/services/admin.service';
 import { CatalogService, Category } from '../../../core/services/catalog.service';
 
 interface VariantForm {
@@ -55,280 +60,345 @@ function variantToForm(v: ProductVariant): VariantForm {
   selector: 'app-admin-product-form',
   imports: [FormsModule, RouterLink, CurrencyPipe],
   template: `
-    <div class="p-8 max-w-3xl">
-      <!-- Header -->
-      <div class="flex items-center gap-3 mb-8">
-        <a routerLink="/admin/products" class="text-gray-400 hover:text-gray-600 transition-colors">
-          <svg
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
-            />
-          </svg>
-        </a>
-        <h1 class="text-2xl font-bold text-gray-900">
-          {{ isEditMode() ? 'Edit Product' : 'New Product' }}
+    <section class="border-b border-ink-200 bg-paper">
+      <div class="px-10 py-12">
+        <a
+          routerLink="/admin/products"
+          class="text-2xs uppercase tracking-widest link-underline mb-4 inline-block"
+          >← All Products</a
+        >
+        <p class="label mb-3">— Studio · {{ isEditMode() ? 'Edit' : 'Create' }}</p>
+        <h1 class="font-light text-5xl">
+          {{ isEditMode() ? 'Edit product.' : 'New product.' }}
         </h1>
       </div>
+    </section>
 
+    <div class="px-10 py-10 max-w-4xl">
       @if (pageLoading()) {
         <div class="space-y-4">
-          <div class="h-10 bg-gray-100 rounded-xl animate-pulse"></div>
-          <div class="h-10 bg-gray-100 rounded-xl animate-pulse"></div>
-          <div class="h-24 bg-gray-100 rounded-2xl animate-pulse"></div>
+          <div class="h-12 bg-ink-50 animate-pulse"></div>
+          <div class="h-12 bg-ink-50 animate-pulse"></div>
+          <div class="h-32 bg-ink-50 animate-pulse"></div>
         </div>
       }
 
       @if (!pageLoading()) {
-        <!-- Product details form -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-          <h2 class="text-sm font-semibold text-gray-700 mb-5">Product Details</h2>
+        <!-- Details -->
+        <p class="label mb-6">— 01 / Details</p>
 
-          @if (saveError()) {
-            <div
-              class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl"
-            >
-              {{ saveError() }}
-            </div>
-          }
+        @if (saveError()) {
+          <div class="mb-6 border-l-2 border-ink bg-ink-50 px-4 py-3 text-sm text-ink-700">
+            {{ saveError() }}
+          </div>
+        }
 
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5">Name *</label>
-                <input
-                  type="text"
-                  [(ngModel)]="name"
-                  (ngModelChange)="onNameChange($event)"
-                  placeholder="Product name"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5">Slug *</label>
-                <input
-                  type="text"
-                  [(ngModel)]="slug"
-                  placeholder="product-url-slug"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5">Brand</label>
-                <input
-                  type="text"
-                  [(ngModel)]="brand"
-                  placeholder="Brand name"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
-                <select
-                  [(ngModel)]="categoryId"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">— No category —</option>
-                  @for (cat of categories(); track cat.id) {
-                    <option [value]="cat.id">{{ cat.name }}</option>
-                  }
-                </select>
-              </div>
-            </div>
-
+        <div class="space-y-7 pb-10 border-b border-ink-200">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
-              <textarea
-                [(ngModel)]="description"
-                rows="3"
-                placeholder="Product description…"
-                class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-              ></textarea>
+              <label class="label-input">Name *</label>
+              <input
+                type="text"
+                [(ngModel)]="name"
+                (ngModelChange)="onNameChange($event)"
+                placeholder="Product name"
+                class="input-clean"
+              />
             </div>
-
-            <div class="flex items-center gap-3">
-              <button
-                type="button"
-                (click)="isPublished = !isPublished"
-                class="relative inline-flex items-center w-10 h-5 rounded-full transition-colors focus:outline-none"
-                [class.bg-indigo-600]="isPublished"
-                [class.bg-gray-200]="!isPublished"
-              >
-                <span
-                  class="w-4 h-4 bg-white rounded-full shadow transition-transform"
-                  [class.translate-x-5]="isPublished"
-                  [class.translate-x-0.5]="!isPublished"
-                ></span>
-              </button>
-              <span class="text-sm text-gray-700">Published</span>
+            <div>
+              <label class="label-input">Slug *</label>
+              <input
+                type="text"
+                [(ngModel)]="slug"
+                placeholder="product-url-slug"
+                class="input-clean font-mono"
+              />
             </div>
           </div>
 
-          <div class="flex gap-3 mt-6 pt-5 border-t border-gray-100">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label class="label-input">Brand</label>
+              <input type="text" [(ngModel)]="brand" placeholder="Brand name" class="input-clean" />
+            </div>
+            <div>
+              <label class="label-input">Category</label>
+              <select [(ngModel)]="categoryId" class="input-clean bg-transparent">
+                <option value="">— No category —</option>
+                @for (cat of categories(); track cat.id) {
+                  <option [value]="cat.id">{{ cat.name }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="label-input">Description</label>
+            <textarea
+              [(ngModel)]="description"
+              rows="4"
+              placeholder="Considered, evocative copy that captures the piece…"
+              class="input-clean resize-none"
+            ></textarea>
+          </div>
+
+          <div class="flex items-center gap-3">
             <button
-              (click)="save()"
-              [disabled]="saving()"
-              class="px-5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              type="button"
+              (click)="isPublished = !isPublished"
+              class="relative inline-flex items-center w-10 h-5 transition-colors focus:outline-none"
+              [class.bg-ink]="isPublished"
+              [class.bg-ink-200]="!isPublished"
             >
-              {{ saving() ? 'Saving…' : isEditMode() ? 'Save Changes' : 'Create Product' }}
+              <span
+                class="w-4 h-4 bg-paper transition-transform"
+                [class.translate-x-5]="isPublished"
+                [class.translate-x-0.5]="!isPublished"
+              ></span>
             </button>
-            <a
-              routerLink="/admin/products"
-              class="px-5 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              >Cancel</a
-            >
+            <span class="text-2xs uppercase tracking-widest">Published</span>
           </div>
         </div>
 
-        <!-- Variants section — only shown in edit mode after product is created -->
+        <div class="flex gap-4 py-8">
+          <button (click)="save()" [disabled]="saving()" class="btn-primary">
+            {{ saving() ? 'Saving…' : isEditMode() ? 'Save Changes' : 'Create Product' }}
+          </button>
+          <a routerLink="/admin/products" class="btn-outline">Cancel</a>
+        </div>
+
+        <!-- Images -->
         @if (isEditMode()) {
-          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <div class="flex items-center justify-between mb-5">
-              <h2 class="text-sm font-semibold text-gray-700">Variants</h2>
+          <div class="mt-12 pt-10 border-t border-ink-200">
+            <div class="flex items-center justify-between mb-8">
+              <h2 class="text-2xl font-light tracking-tight">Images</h2>
+              <span class="text-sm text-ink-500 tabular">{{ images().length }} added</span>
+            </div>
+
+            @if (imageError()) {
+              <p class="mb-4 bg-ink-50 px-4 py-3 text-sm text-ink rounded">{{ imageError() }}</p>
+            }
+
+            <!-- Add image -->
+            <div class="grid grid-cols-1 sm:grid-cols-[2fr_1fr_auto] gap-4 items-end mb-8">
+              <div>
+                <label class="label-input">Image URL</label>
+                <input
+                  type="url"
+                  [(ngModel)]="newImageUrl"
+                  placeholder="https://…"
+                  class="input-clean"
+                />
+              </div>
+              <div>
+                <label class="label-input">Alt text (optional)</label>
+                <input
+                  type="text"
+                  [(ngModel)]="newImageAlt"
+                  placeholder="Describe the image"
+                  class="input-clean"
+                />
+              </div>
+              <button
+                type="button"
+                (click)="addImage()"
+                [disabled]="addingImage() || !newImageUrl.trim()"
+                class="btn-outline self-end pb-3"
+              >
+                {{ addingImage() ? 'Adding…' : 'Add' }}
+              </button>
+            </div>
+
+            @if (images().length === 0) {
+              <p class="text-sm text-ink-500 py-12 text-center border border-ink-200 rounded">
+                No images yet. The first image will appear as the product thumbnail.
+              </p>
+            } @else {
+              <div class="space-y-3">
+                @for (img of images(); track img.id; let i = $index; let last = $last) {
+                  <div
+                    class="grid grid-cols-[5rem_1fr_auto] gap-5 items-center bg-ink-50/40 px-4 py-3 rounded"
+                  >
+                    <div class="aspect-[4/5] w-20 bg-ink-100 overflow-hidden">
+                      <img
+                        [src]="img.url"
+                        [alt]="img.alt ?? ''"
+                        class="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-xs text-ink-400 truncate">{{ img.url }}</p>
+                      <input
+                        type="text"
+                        [value]="img.alt ?? ''"
+                        (blur)="updateAlt(img, $any($event.target).value)"
+                        placeholder="Alt text"
+                        class="input-clean text-sm py-1.5"
+                      />
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button
+                        (click)="moveImage(i, -1)"
+                        [disabled]="i === 0 || reordering()"
+                        class="text-sm text-ink-500 hover:text-ink transition-colors disabled:opacity-30"
+                        title="Move up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        (click)="moveImage(i, 1)"
+                        [disabled]="last || reordering()"
+                        class="text-sm text-ink-500 hover:text-ink transition-colors disabled:opacity-30"
+                        title="Move down"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        (click)="deleteImage(img)"
+                        [disabled]="deletingImageId() === img.id"
+                        class="ml-2 text-sm text-ink-400 hover:text-ink transition-colors link-underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Variants -->
+        @if (isEditMode()) {
+          <div class="mt-12 pt-10 border-t border-ink-200">
+            <div class="flex items-center justify-between mb-8">
+              <p class="label">— 02 / Variants</p>
               <button
                 (click)="showAddVariant.set(true)"
                 [disabled]="showAddVariant()"
-                class="text-xs text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-40"
+                class="text-2xs uppercase tracking-widest link-underline disabled:opacity-40"
               >
                 + Add Variant
               </button>
             </div>
 
-            <!-- Existing variants -->
             @if (variants().length === 0 && !showAddVariant()) {
-              <p class="text-sm text-gray-400 text-center py-6">
-                No variants yet. Add at least one variant so customers can purchase this product.
+              <p class="text-ink-500 text-center py-12 border border-ink-200">
+                No variants yet. Add at least one so customers can purchase this product.
               </p>
             }
 
             <div class="space-y-3">
               @for (v of variants(); track v.id) {
                 @if (editingVariantId() === v.id) {
-                  <!-- Inline edit row -->
-                  <div class="border border-indigo-200 rounded-xl p-4 bg-indigo-50/30">
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div class="border border-ink p-6 bg-ink-50">
+                    <p class="label mb-4">— Editing variant</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-5">
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">SKU *</label>
+                        <label class="label-input">SKU *</label>
                         <input
                           type="text"
                           [(ngModel)]="editForm.sku"
-                          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          class="input-clean font-mono text-xs"
                         />
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">Attribute key</label>
+                        <label class="label-input">Attribute key</label>
                         <input
                           type="text"
                           [(ngModel)]="editForm.attributeKey"
                           placeholder="e.g. color"
-                          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          class="input-clean"
                         />
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">Attribute value</label>
+                        <label class="label-input">Attribute value</label>
                         <input
                           type="text"
                           [(ngModel)]="editForm.attributeVal"
-                          placeholder="e.g. Red"
-                          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="e.g. Bone"
+                          class="input-clean"
                         />
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">Price (₹) *</label>
+                        <label class="label-input">Price (₹) *</label>
                         <input
                           type="number"
                           [(ngModel)]="editForm.price"
                           min="0"
                           step="0.01"
-                          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          class="input-clean font-mono"
                         />
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">Compare-at (₹)</label>
+                        <label class="label-input">Compare-at (₹)</label>
                         <input
                           type="number"
                           [(ngModel)]="editForm.compareAtPrice"
                           min="0"
                           step="0.01"
-                          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          class="input-clean font-mono"
                         />
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">Stock qty</label>
+                        <label class="label-input">Stock</label>
                         <input
                           type="number"
                           [(ngModel)]="editForm.stockQty"
                           min="0"
-                          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          class="input-clean font-mono"
                         />
                       </div>
                     </div>
-                    <div class="flex gap-2 mt-3">
+                    <div class="flex gap-3 mt-6">
                       <button
                         (click)="saveVariantEdit(v.id)"
                         [disabled]="variantSaving()"
-                        class="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                        class="btn-primary"
                       >
-                        {{ variantSaving() ? 'Saving…' : 'Save' }}
+                        {{ variantSaving() ? 'Saving…' : 'Save Variant' }}
                       </button>
-                      <button
-                        (click)="editingVariantId.set(null)"
-                        class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50"
-                      >
+                      <button (click)="editingVariantId.set(null)" class="btn-outline">
                         Cancel
                       </button>
                     </div>
                   </div>
                 } @else {
-                  <!-- Display row -->
                   <div
-                    class="flex items-center justify-between gap-4 border border-gray-100 rounded-xl px-4 py-3"
+                    class="grid grid-cols-12 items-center gap-4 border border-ink-200 px-5 py-4 hover:bg-ink-50 transition-colors"
                   >
-                    <div class="flex items-center gap-4 min-w-0">
-                      <span class="font-mono text-xs text-gray-500 shrink-0">{{ v.sku }}</span>
+                    <span class="col-span-3 font-mono text-xs">{{ v.sku }}</span>
+                    <span class="col-span-3 text-2xs uppercase tracking-widest text-ink-500">
                       @if (attrLabel(v)) {
-                        <span class="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{{
-                          attrLabel(v)
-                        }}</span>
+                        {{ attrLabel(v) }}
+                      } @else {
+                        —
                       }
-                      <span class="text-sm font-semibold text-gray-900">{{
-                        +v.price | currency: 'INR' : 'symbol' : '1.2-2'
-                      }}</span>
+                    </span>
+                    <div class="col-span-2 font-mono text-sm">
+                      {{ +v.price | currency: 'INR' : 'symbol' : '1.2-2' }}
                       @if (v.compareAtPrice) {
-                        <span class="text-xs text-gray-400 line-through">{{
-                          +v.compareAtPrice | currency: 'INR' : 'symbol' : '1.0-0'
-                        }}</span>
+                        <span class="block text-2xs text-ink-400 line-through">
+                          {{ +v.compareAtPrice | currency: 'INR' : 'symbol' : '1.0-0' }}
+                        </span>
                       }
                     </div>
-                    <div class="flex items-center gap-3 shrink-0">
-                      <span
-                        class="text-xs"
-                        [class.text-green-600]="v.stockQty > 0"
-                        [class.text-red-500]="v.stockQty === 0"
-                      >
-                        {{ v.stockQty }} in stock
-                      </span>
+                    <span
+                      class="col-span-2 text-2xs uppercase tracking-widest"
+                      [class.text-ink]="v.stockQty === 0"
+                      >{{ v.stockQty }} In Stock</span
+                    >
+                    <div class="col-span-2 flex items-center justify-end gap-4">
                       <button
                         (click)="startEditVariant(v)"
-                        class="text-xs text-indigo-600 hover:underline"
+                        class="text-2xs uppercase tracking-widest link-underline"
                       >
                         Edit
                       </button>
                       <button
                         (click)="deleteVariant(v.id)"
                         [disabled]="deletingVariantId() === v.id"
-                        class="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+                        class="text-2xs uppercase tracking-widest text-ink hover:text-ink transition-colors disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -337,84 +407,79 @@ function variantToForm(v: ProductVariant): VariantForm {
                 }
               }
 
-              <!-- Add variant form -->
               @if (showAddVariant()) {
-                <div class="border border-green-200 rounded-xl p-4 bg-green-50/30">
-                  <p class="text-xs font-semibold text-gray-600 mb-3">New Variant</p>
-                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div class="border border-ink p-6 bg-ink-50">
+                  <p class="label mb-4">— New Variant</p>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-5">
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">SKU *</label>
+                      <label class="label-input">SKU *</label>
                       <input
                         type="text"
                         [(ngModel)]="addForm.sku"
                         placeholder="SKU-001"
-                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        class="input-clean font-mono text-xs"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Attribute key</label>
+                      <label class="label-input">Attribute key</label>
                       <input
                         type="text"
                         [(ngModel)]="addForm.attributeKey"
                         placeholder="e.g. color"
-                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        class="input-clean"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Attribute value</label>
+                      <label class="label-input">Attribute value</label>
                       <input
                         type="text"
                         [(ngModel)]="addForm.attributeVal"
-                        placeholder="e.g. Red"
-                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        placeholder="e.g. Bone"
+                        class="input-clean"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Price (₹) *</label>
+                      <label class="label-input">Price (₹) *</label>
                       <input
                         type="number"
                         [(ngModel)]="addForm.price"
                         min="0"
                         step="0.01"
                         placeholder="999.00"
-                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        class="input-clean font-mono"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Compare-at (₹)</label>
+                      <label class="label-input">Compare-at (₹)</label>
                       <input
                         type="number"
                         [(ngModel)]="addForm.compareAtPrice"
                         min="0"
                         step="0.01"
                         placeholder="Optional"
-                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        class="input-clean font-mono"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Stock qty</label>
+                      <label class="label-input">Stock</label>
                       <input
                         type="number"
                         [(ngModel)]="addForm.stockQty"
                         min="0"
-                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        class="input-clean font-mono"
                       />
                     </div>
                   </div>
                   @if (variantError()) {
-                    <p class="mt-2 text-xs text-red-600">{{ variantError() }}</p>
+                    <p class="mt-4 text-xs text-ink">{{ variantError() }}</p>
                   }
-                  <div class="flex gap-2 mt-3">
-                    <button
-                      (click)="addVariant()"
-                      [disabled]="variantSaving()"
-                      class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                    >
+                  <div class="flex gap-3 mt-6">
+                    <button (click)="addVariant()" [disabled]="variantSaving()" class="btn-primary">
                       {{ variantSaving() ? 'Adding…' : 'Add Variant' }}
                     </button>
                     <button
                       (click)="showAddVariant.set(false); variantError.set('')"
-                      class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      class="btn-outline"
                     >
                       Cancel
                     </button>
@@ -434,16 +499,13 @@ export class AdminProductFormComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  // Mode
   readonly isEditMode = computed(() => !!this.productId);
   productId: string | null = null;
 
-  // Page state
   readonly pageLoading = signal(false);
   readonly saving = signal(false);
   readonly saveError = signal('');
 
-  // Product form fields
   name = '';
   slug = '';
   brand = '';
@@ -451,16 +513,23 @@ export class AdminProductFormComponent implements OnInit {
   categoryId = '';
   isPublished = false;
 
-  // Categories for dropdown
   readonly categories = signal<Category[]>([]);
 
-  // Variants
   readonly variants = signal<ProductVariant[]>([]);
   readonly showAddVariant = signal(false);
   readonly editingVariantId = signal<string | null>(null);
   readonly variantSaving = signal(false);
   readonly variantError = signal('');
   readonly deletingVariantId = signal<string | null>(null);
+
+  // Images
+  readonly images = signal<ProductImage[]>([]);
+  readonly addingImage = signal(false);
+  readonly reordering = signal(false);
+  readonly deletingImageId = signal<string | null>(null);
+  readonly imageError = signal('');
+  newImageUrl = '';
+  newImageAlt = '';
 
   addForm: VariantForm = emptyVariantForm();
   editForm: VariantForm = emptyVariantForm();
@@ -489,6 +558,7 @@ export class AdminProductFormComponent implements OnInit {
         this.categoryId = p.categoryId ?? '';
         this.isPublished = p.isPublished;
         this.variants.set(p.variants);
+        this.images.set(p.images ?? []);
         this.pageLoading.set(false);
       },
       error: () => {
@@ -542,8 +612,6 @@ export class AdminProductFormComponent implements OnInit {
       },
     });
   }
-
-  // ── Variants ─────────────────────────────────────────────────────────────
 
   addVariant(): void {
     if (!this.addForm.sku.trim() || !this.addForm.price) {
@@ -601,5 +669,80 @@ export class AdminProductFormComponent implements OnInit {
     return Object.entries(v.attributes ?? {})
       .map(([k, val]) => `${k}: ${val}`)
       .join(', ');
+  }
+
+  // ── Images ──────────────────────────────────────────────────────────────
+
+  addImage(): void {
+    const url = this.newImageUrl.trim();
+    if (!url) return;
+    this.imageError.set('');
+    this.addingImage.set(true);
+    this.adminService
+      .addImage(this.productId!, url, this.newImageAlt.trim() || undefined)
+      .subscribe({
+        next: (res) => {
+          this.images.update((rows) => [...rows, res.data]);
+          this.newImageUrl = '';
+          this.newImageAlt = '';
+          this.addingImage.set(false);
+        },
+        error: (err) => {
+          this.addingImage.set(false);
+          const flat = err?.error?.error;
+          const msg =
+            (flat?.fieldErrors?.url?.[0] as string | undefined) ||
+            (typeof flat === 'string' ? flat : 'Could not add image — check the URL.');
+          this.imageError.set(msg);
+        },
+      });
+  }
+
+  updateAlt(img: ProductImage, newAlt: string): void {
+    const trimmed = newAlt.trim();
+    if ((img.alt ?? '') === trimmed) return;
+    this.adminService.updateImage(this.productId!, img.id, { alt: trimmed || null }).subscribe({
+      next: (res) => {
+        this.images.update((rows) => rows.map((r) => (r.id === img.id ? res.data : r)));
+      },
+    });
+  }
+
+  moveImage(index: number, direction: -1 | 1): void {
+    const list = [...this.images()];
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    // Optimistic
+    this.images.set(list);
+    this.reordering.set(true);
+    this.adminService
+      .reorderImages(
+        this.productId!,
+        list.map((i) => i.id),
+      )
+      .subscribe({
+        next: (res) => {
+          this.images.set(res.data);
+          this.reordering.set(false);
+        },
+        error: () => {
+          // Revert on failure by reloading
+          this.reordering.set(false);
+          if (this.productId) this.loadProduct(this.productId);
+        },
+      });
+  }
+
+  deleteImage(img: ProductImage): void {
+    if (!confirm('Remove this image?')) return;
+    this.deletingImageId.set(img.id);
+    this.adminService.deleteImage(this.productId!, img.id).subscribe({
+      next: () => {
+        this.images.update((rows) => rows.filter((r) => r.id !== img.id));
+        this.deletingImageId.set(null);
+      },
+      error: () => this.deletingImageId.set(null),
+    });
   }
 }

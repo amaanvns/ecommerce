@@ -2,7 +2,21 @@
   "permissions": {
     "allow": [
       "Bash(dir C:myProjectsEcommerce *)",
-      "PowerShell(npm show *)"
+      "PowerShell(npm show *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\myProjects\\\\Ecommerce\\\\apps\\\\api\\\\src\\\\modules\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(New-Item *)",
+      "PowerShell(cd C:\\\\myProjects\\\\Ecommerce\\\\apps\\\\web; npx tsc --noEmit 2>&1 | Where-Object { $_ -notmatch \"spec.ts\" } | Select-Object -First 40)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(ls \"/c/Users/amaan arshad/.claude/projects/c--myProjects-Ecommerce/memory/\" 2>/dev/null; echo \"---APPS---\"; ls c:/myProjects/Ecommerce/apps/web/src/app; echo \"---API---\"; ls c:/myProjects/Ecommerce/apps/api/src; echo \"---PACKAGES---\"; ls c:/myProjects/Ecommerce/packages; echo \"---DB---\"; ls c:/myProjects/Ecommerce/db)",
+      "Read(//c/Users/amaan arshad/.claude/projects/c--myProjects-Ecommerce/memory//**)",
+      "Bash(npm run *)",
+      "Bash(npx --workspace=apps/web ng build --configuration=development)",
+      "Bash(xargs sed -i -e s/bg-bone-50/bg-paper/g -e s/bg-bone-100/bg-ink-50/g -e s/bg-bone-200/bg-ink-100/g -e s/bg-bone-300/bg-ink-200/g -e s/text-bone-200/text-ink-200/g -e s/text-bone-300/text-ink-300/g -e s/text-bone-100/text-ink-100/g -e s/border-bone-50/border-paper/g -e s/border-bone-100/border-ink-100/g -e s/border-bone-200/border-ink-200/g -e s/bg-accent-50/bg-ink-50/g -e s/bg-accent-700/bg-ink-700/g -e s/text-accent-700/text-ink-700/g -e s/border-accent-200/border-ink-200/g -e 's/font-display //g' -e 's/ font-display//g' -e s/font-display//g -e 's/class=\"label-eyebrow/class=\"label-input/g' -e 's/class=\"input-line/class=\"input-clean/g' -e 's/input-line /input-clean /g')",
+      "Bash(xargs sed -i -e s/text-bone/text-paper/g -e 's/'\\\\''border-ink bg-ink text-paper'\\\\''/'\\\\''border-ink bg-ink text-paper'\\\\''/g' -e s/text-accent/text-ink/g -e 's/bg-accent\\\\b/bg-ink/g' -e s/border-accent/border-ink/g -e 's/class=\"eyebrow /class=\"label /g' -e 's/class=\"eyebrow\"/class=\"label\"/g' -e 's/\"pb-3 eyebrow/\"pb-3 label/g' -e 's/\" eyebrow\"/\" label\"/g' -e 's/ eyebrow / label /g')"
     ]
   }
 }

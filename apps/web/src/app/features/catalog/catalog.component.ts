@@ -13,48 +13,41 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
   selector: 'app-catalog',
   imports: [FormsModule, ProductCardComponent],
   template: `
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Page header -->
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Products</h1>
-        @if (meta()) {
-          <p class="text-sm text-gray-500 mt-1">{{ meta()!.total }} results</p>
-        }
-      </div>
+    <!-- Page header -->
+    <section class="container-edge pt-20 pb-12 lg:pt-28 lg:pb-16">
+      <h1 class="text-4xl md:text-5xl font-light tracking-tighter">Shop</h1>
+      @if (meta()) {
+        <p class="text-sm text-ink-500 mt-3 tabular">
+          {{ meta()!.total }} {{ meta()!.total === 1 ? 'item' : 'items' }}
+        </p>
+      }
+    </section>
 
-      <div class="flex gap-8">
+    <div class="container-edge pb-24">
+      <div class="flex flex-col lg:flex-row gap-12 lg:gap-16">
         <!-- Sidebar filters -->
-        <aside class="hidden lg:block w-56 shrink-0">
-          <div class="sticky top-20 space-y-6">
-            <!-- Search -->
+        <aside class="lg:w-56 shrink-0">
+          <div class="lg:sticky lg:top-28 space-y-10">
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2"
-                >Search</label
-              >
+              <p class="label mb-4">Search</p>
               <input
                 type="text"
                 [(ngModel)]="searchInput"
                 (keydown.enter)="applySearch()"
-                placeholder="Search products…"
-                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Search…"
+                class="input-clean text-sm"
               />
             </div>
 
-            <!-- Categories -->
             <div>
-              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Category
-              </p>
-              <ul class="space-y-1">
+              <p class="label mb-4">Category</p>
+              <ul class="space-y-2.5">
                 <li>
                   <button
                     (click)="setCategory(null)"
-                    class="w-full text-left text-sm px-2 py-1.5 rounded-lg transition-colors"
-                    [class.bg-indigo-50]="!activeCategory()"
-                    [class.text-indigo-700]="!activeCategory()"
-                    [class.font-medium]="!activeCategory()"
-                    [class.text-gray-600]="!!activeCategory()"
-                    [class.hover:bg-gray-50]="!!activeCategory()"
+                    class="text-sm transition-colors hover:text-ink"
+                    [class.text-ink]="!activeCategory()"
+                    [class.text-ink-500]="!!activeCategory()"
                   >
                     All
                   </button>
@@ -63,12 +56,9 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
                   <li>
                     <button
                       (click)="setCategory(cat.slug)"
-                      class="w-full text-left text-sm px-2 py-1.5 rounded-lg transition-colors"
-                      [class.bg-indigo-50]="activeCategory() === cat.slug"
-                      [class.text-indigo-700]="activeCategory() === cat.slug"
-                      [class.font-medium]="activeCategory() === cat.slug"
-                      [class.text-gray-600]="activeCategory() !== cat.slug"
-                      [class.hover:bg-gray-50]="activeCategory() !== cat.slug"
+                      class="text-sm transition-colors hover:text-ink"
+                      [class.text-ink]="activeCategory() === cat.slug"
+                      [class.text-ink-500]="activeCategory() !== cat.slug"
                     >
                       {{ cat.name }}
                     </button>
@@ -77,35 +67,33 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
               </ul>
             </div>
 
-            <!-- Price range -->
             <div>
-              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Price</p>
-              <div class="flex gap-2 items-center">
+              <p class="label mb-4">Price</p>
+              <div class="flex gap-3 items-center">
                 <input
                   type="number"
                   [(ngModel)]="minPrice"
                   (change)="applyFilters()"
                   placeholder="Min"
                   min="0"
-                  class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="input-clean text-sm tabular"
                 />
-                <span class="text-gray-400 text-xs">–</span>
+                <span class="text-ink-300">–</span>
                 <input
                   type="number"
                   [(ngModel)]="maxPrice"
                   (change)="applyFilters()"
                   placeholder="Max"
                   min="0"
-                  class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="input-clean text-sm tabular"
                 />
               </div>
             </div>
 
-            <!-- Reset -->
             @if (hasActiveFilters()) {
               <button
                 (click)="resetFilters()"
-                class="text-sm text-red-500 hover:text-red-700 transition-colors"
+                class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
               >
                 Clear filters
               </button>
@@ -116,109 +104,83 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
         <!-- Main content -->
         <div class="flex-1 min-w-0">
           <!-- Sort bar -->
-          <div class="flex items-center justify-between mb-4">
-            <div class="text-sm text-gray-500 lg:hidden">
-              @if (meta()) {
-                {{ meta()!.total }} results
-              }
-            </div>
-            <div class="flex items-center gap-2 ml-auto">
-              <label class="text-sm text-gray-500">Sort:</label>
+          <div class="flex items-center justify-between mb-12 pb-5 border-b border-ink-200">
+            <p class="text-sm text-ink-500 tabular">{{ products().length }} shown</p>
+            <div class="flex items-center gap-3">
+              <span class="text-sm text-ink-500">Sort by</span>
               <select
                 [(ngModel)]="sortValue"
                 (ngModelChange)="applyFilters()"
-                class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="bg-transparent border-0 text-sm focus:ring-0 focus:outline-none cursor-pointer pr-8"
               >
                 <option value="newest">Newest</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
+                <option value="price_asc">Price, low to high</option>
+                <option value="price_desc">Price, high to low</option>
                 <option value="name_asc">Name A–Z</option>
               </select>
             </div>
           </div>
 
-          <!-- Skeleton loaders -->
           @if (loading()) {
-            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
               @for (_ of skeletons; track $index) {
-                <div class="rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-                  <div class="aspect-square bg-gray-200"></div>
-                  <div class="p-4 space-y-2">
-                    <div class="h-3 bg-gray-200 rounded w-1/3"></div>
-                    <div class="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div class="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </div>
+                <div class="animate-pulse">
+                  <div class="aspect-[4/5] bg-ink-100 mb-4"></div>
+                  <div class="h-3 bg-ink-100 w-1/3 mb-2"></div>
+                  <div class="h-4 bg-ink-100 w-2/3 mb-2"></div>
+                  <div class="h-4 bg-ink-100 w-1/4"></div>
                 </div>
               }
             </div>
           }
 
-          <!-- Products grid -->
           @if (!loading()) {
             @if (products().length === 0) {
-              <div class="text-center py-24 text-gray-400">
-                <svg
-                  class="mx-auto mb-4 w-12 h-12"
-                  width="48"
-                  height="48"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                  />
-                </svg>
-                <p class="text-lg font-medium text-gray-500">No products found</p>
-                <p class="text-sm mt-1">Try adjusting your filters</p>
-                <button
-                  (click)="resetFilters()"
-                  class="mt-4 text-indigo-600 hover:underline text-sm"
-                >
-                  Clear all filters
-                </button>
+              <div class="text-center py-32">
+                <p class="text-3xl font-light tracking-tight mb-3">Nothing found</p>
+                <p class="text-ink-500 max-w-sm mx-auto">
+                  Try adjusting your filters or clearing them.
+                </p>
+                <button (click)="resetFilters()" class="btn-outline mt-8">Clear filters</button>
               </div>
             } @else {
-              <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div class="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-16">
                 @for (p of products(); track p.id) {
                   <app-product-card [product]="p" />
                 }
               </div>
 
-              <!-- Pagination -->
               @if (meta() && meta()!.totalPages > 1) {
-                <div class="mt-8 flex items-center justify-center gap-1">
+                <div class="mt-20 flex items-center justify-between border-t border-ink-200 pt-8">
                   <button
                     (click)="goToPage(currentPage() - 1)"
                     [disabled]="currentPage() === 1"
-                    class="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                    class="text-sm text-ink-500 hover:text-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    Prev
+                    ← Previous
                   </button>
 
-                  @for (p of pageNumbers(); track p) {
-                    <button
-                      (click)="goToPage(p)"
-                      class="px-3 py-2 rounded-lg text-sm font-medium border transition-colors"
-                      [class.bg-indigo-600]="p === currentPage()"
-                      [class.text-white]="p === currentPage()"
-                      [class.border-indigo-600]="p === currentPage()"
-                      [class.border-gray-200]="p !== currentPage()"
-                      [class.hover:bg-gray-50]="p !== currentPage()"
-                    >
-                      {{ p }}
-                    </button>
-                  }
+                  <div class="flex items-center gap-1 tabular">
+                    @for (p of pageNumbers(); track p) {
+                      <button
+                        (click)="goToPage(p)"
+                        class="w-9 h-9 text-sm rounded-full transition-colors"
+                        [class.bg-ink]="p === currentPage()"
+                        [class.text-paper]="p === currentPage()"
+                        [class.text-ink-500]="p !== currentPage()"
+                        [class.hover:text-ink]="p !== currentPage()"
+                      >
+                        {{ p }}
+                      </button>
+                    }
+                  </div>
 
                   <button
                     (click)="goToPage(currentPage() + 1)"
                     [disabled]="currentPage() === meta()!.totalPages"
-                    class="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                    class="text-sm text-ink-500 hover:text-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    Next
+                    Next →
                   </button>
                 </div>
               }
@@ -249,7 +211,7 @@ export class CatalogComponent implements OnInit {
   minPrice: number | null = null;
   maxPrice: number | null = null;
 
-  readonly skeletons = new Array(12);
+  readonly skeletons = new Array(9);
 
   readonly hasActiveFilters = computed(
     () => !!this.activeCategory() || !!this.searchInput || !!this.minPrice || !!this.maxPrice,

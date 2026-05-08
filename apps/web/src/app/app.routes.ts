@@ -119,6 +119,22 @@ export const routes: Routes = [
           import('./features/admin/users/admin-users.component').then((m) => m.AdminUsersComponent),
         title: 'Users — Admin',
       },
+      {
+        path: 'reviews',
+        loadComponent: () =>
+          import('./features/admin/reviews/admin-reviews.component').then(
+            (m) => m.AdminReviewsComponent,
+          ),
+        title: 'Reviews — Admin',
+      },
+      {
+        path: 'coupons',
+        loadComponent: () =>
+          import('./features/admin/coupons/admin-coupons.component').then(
+            (m) => m.AdminCouponsComponent,
+          ),
+        title: 'Coupons — Admin',
+      },
     ],
   },
 

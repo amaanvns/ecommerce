@@ -9,128 +9,118 @@ const ORDER_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'
   selector: 'app-admin-orders',
   imports: [CurrencyPipe, DatePipe, TitleCasePipe, FormsModule],
   template: `
-    <div class="p-8">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Orders</h1>
-        <select
-          [(ngModel)]="statusFilter"
-          (ngModelChange)="onStatusFilter()"
-          class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">All statuses</option>
-          @for (s of statuses; track s) {
-            <option [value]="s">{{ s | titlecase }}</option>
-          }
-        </select>
+    <section class="border-b border-ink-200 bg-paper">
+      <div class="px-10 py-12 flex items-end justify-between gap-6">
+        <h1 class="text-4xl font-light tracking-tighter">Orders</h1>
+        <div class="flex items-center gap-6">
+          <select
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="onStatusFilter()"
+            class="bg-transparent border-0 border-b border-ink text-sm focus:ring-0 focus:outline-none cursor-pointer pr-8 py-2"
+          >
+            <option value="">All statuses</option>
+            @for (s of statuses; track s) {
+              <option [value]="s">{{ s | titlecase }}</option>
+            }
+          </select>
+          <button (click)="exportCsv()" [disabled]="exporting()" class="btn-outline">
+            {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+          </button>
+        </div>
       </div>
+    </section>
 
+    <div class="px-10 py-10">
       @if (loading()) {
-        <div class="space-y-2">
+        <div class="space-y-px">
           @for (_ of [1, 2, 3, 4, 5]; track $index) {
-            <div class="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
+            <div class="h-16 bg-ink-50 animate-pulse"></div>
           }
         </div>
       }
 
       @if (!loading()) {
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-gray-50 border-b border-gray-100">
-                <tr class="text-left text-xs text-gray-500">
-                  <th class="px-4 py-3 font-semibold">Order #</th>
-                  <th class="px-4 py-3 font-semibold">Customer</th>
-                  <th class="px-4 py-3 font-semibold">Date</th>
-                  <th class="px-4 py-3 font-semibold">Payment</th>
-                  <th class="px-4 py-3 font-semibold">Total</th>
-                  <th class="px-4 py-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-50">
-                @for (order of orders(); track order.id) {
-                  <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-4 py-3 font-mono text-xs text-gray-600">
-                      #{{ order.orderNumber }}
-                    </td>
-                    <td class="px-4 py-3">
-                      <p class="font-medium text-gray-900 truncate max-w-[140px]">
-                        {{ order.userName ?? '—' }}
-                      </p>
-                      <p class="text-xs text-gray-400 truncate max-w-[140px]">
-                        {{ order.userEmail ?? '' }}
-                      </p>
-                    </td>
-                    <td class="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {{ order.placedAt | date: 'dd MMM yyyy' }}
-                    </td>
-                    <td class="px-4 py-3">
-                      <span
-                        class="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        [class.bg-green-100]="order.paymentStatus === 'paid'"
-                        [class.text-green-700]="order.paymentStatus === 'paid'"
-                        [class.bg-yellow-100]="order.paymentStatus === 'pending'"
-                        [class.text-yellow-700]="order.paymentStatus === 'pending'"
-                        [class.bg-gray-100]="
-                          order.paymentStatus !== 'paid' && order.paymentStatus !== 'pending'
-                        "
-                        [class.text-gray-600]="
-                          order.paymentStatus !== 'paid' && order.paymentStatus !== 'pending'
-                        "
-                        >{{ order.paymentStatus | titlecase }}</span
-                      >
-                    </td>
-                    <td class="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">
-                      {{ +order.total | currency: 'INR' : 'symbol' : '1.2-2' }}
-                    </td>
-                    <td class="px-4 py-3">
-                      <select
-                        [value]="order.status"
-                        (change)="updateStatus(order, $any($event.target).value)"
-                        [disabled]="updating() === order.id"
-                        class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-                        [class]="statusClass(order.status)"
-                      >
-                        @for (s of statuses; track s) {
-                          <option [value]="s">{{ s | titlecase }}</option>
-                        }
-                      </select>
-                    </td>
-                  </tr>
-                }
-                @if (orders().length === 0) {
-                  <tr>
-                    <td colspan="6" class="px-4 py-12 text-center text-gray-400 text-sm">
-                      No orders found
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-ink text-left">
+              <th class="pb-3 label">Order No.</th>
+              <th class="pb-3 label">Customer</th>
+              <th class="pb-3 label">Date</th>
+              <th class="pb-3 label">Payment</th>
+              <th class="pb-3 label text-right">Total</th>
+              <th class="pb-3 label">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (order of orders(); track order.id) {
+              <tr class="border-b border-ink-200 hover:bg-ink-50 transition-colors">
+                <td class="py-4 font-mono text-xs">{{ order.orderNumber }}</td>
+                <td class="py-4">
+                  <p class="text-base leading-tight truncate max-w-[180px]">
+                    {{ order.userName ?? '—' }}
+                  </p>
+                  <p
+                    class="text-2xs uppercase tracking-widest text-ink-400 truncate max-w-[180px] mt-0.5"
+                  >
+                    {{ order.userEmail ?? '' }}
+                  </p>
+                </td>
+                <td class="py-4 text-sm text-ink-500 whitespace-nowrap">
+                  {{ order.placedAt | date: 'dd MMM yyyy' }}
+                </td>
+                <td class="py-4">
+                  <span class="badge border" [class]="paymentClass(order.paymentStatus)">
+                    {{ order.paymentStatus | titlecase }}
+                  </span>
+                </td>
+                <td class="py-4 font-mono text-sm text-right whitespace-nowrap">
+                  {{ +order.total | currency: 'INR' : 'symbol' : '1.2-2' }}
+                </td>
+                <td class="py-4">
+                  <select
+                    [value]="order.status"
+                    (change)="updateStatus(order, $any($event.target).value)"
+                    [disabled]="updating() === order.id"
+                    class="text-2xs uppercase tracking-widest border border-ink-200 px-2 py-1.5 bg-transparent focus:ring-0 focus:border-ink focus:outline-none disabled:opacity-50 cursor-pointer"
+                  >
+                    @for (s of statuses; track s) {
+                      <option [value]="s">{{ s | titlecase }}</option>
+                    }
+                  </select>
+                </td>
+              </tr>
+            }
+            @if (orders().length === 0) {
+              <tr>
+                <td colspan="6" class="py-16 text-center">
+                  <p class="text-3xl font-light">No orders.</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
 
-        <!-- Pagination -->
         @if (meta(); as m) {
           @if (m.totalPages > 1) {
-            <div class="flex items-center justify-between mt-4 text-sm text-gray-500">
-              <span
+            <div class="flex items-center justify-between mt-8 pt-6 border-t border-ink-200">
+              <span class="text-2xs uppercase tracking-widest text-ink-500"
                 >{{ (m.page - 1) * m.limit + 1 }}–{{ min(m.page * m.limit, m.total) }} of
                 {{ m.total }}</span
               >
-              <div class="flex gap-2">
+              <div class="flex gap-6">
                 <button
                   (click)="goToPage(m.page - 1)"
                   [disabled]="m.page === 1"
-                  class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
+                  class="text-2xs uppercase tracking-widest hover:text-ink transition-colors disabled:opacity-30"
                 >
-                  Prev
+                  ← Previous
                 </button>
                 <button
                   (click)="goToPage(m.page + 1)"
                   [disabled]="m.page === m.totalPages"
-                  class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
+                  class="text-2xs uppercase tracking-widest hover:text-ink transition-colors disabled:opacity-30"
                 >
-                  Next
+                  Next →
                 </button>
               </div>
             </div>
@@ -147,6 +137,7 @@ export class AdminOrdersComponent implements OnInit {
   readonly meta = signal<PaginatedMeta | null>(null);
   readonly loading = signal(true);
   readonly updating = signal<string | null>(null);
+  readonly exporting = signal(false);
 
   readonly statuses = ORDER_STATUSES;
   statusFilter = '';
@@ -192,16 +183,31 @@ export class AdminOrdersComponent implements OnInit {
     });
   }
 
-  statusClass(status: string): string {
-    const map: Record<string, string> = {
-      pending: 'bg-yellow-50 text-yellow-700',
-      confirmed: 'bg-blue-50 text-blue-700',
-      packed: 'bg-indigo-50 text-indigo-700',
-      shipped: 'bg-purple-50 text-purple-700',
-      delivered: 'bg-green-50 text-green-700',
-      cancelled: 'bg-red-50 text-red-600',
-    };
-    return map[status] ?? 'bg-gray-50 text-gray-600';
+  exportCsv(): void {
+    this.exporting.set(true);
+    this.adminService
+      .exportOrdersCsv(this.statusFilter === 'paid' ? { status: 'paid' } : undefined)
+      .subscribe({
+        next: (blob) => {
+          this.exporting.set(false);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        },
+        error: () => this.exporting.set(false),
+      });
+  }
+
+  paymentClass(status: string): string {
+    if (status === 'paid') return 'border-ink bg-ink text-paper';
+    if (status === 'pending') return 'border-ink-300 text-ink-500';
+    if (status === 'refunded') return 'border-ink text-ink';
+    return 'border-ink-300 text-ink-500';
   }
 
   min(a: number, b: number): number {

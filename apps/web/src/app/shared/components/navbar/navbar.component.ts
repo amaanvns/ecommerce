@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CartService } from '../../../core/services/cart.service';
@@ -7,158 +7,103 @@ import { CartService } from '../../../core/services/cart.service';
   selector: 'app-navbar',
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <!-- Logo -->
-          <a routerLink="/" class="flex items-center gap-2 text-indigo-600 font-bold text-xl">
-            <svg
-              width="28"
-              height="28"
-              class="w-7 h-7"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z"
-              />
-            </svg>
-            ShopZone
-          </a>
-
-          <!-- Desktop Nav -->
-          <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+    <header
+      class="sticky top-0 z-40 bg-paper/85 backdrop-blur-md transition-all"
+      [class.border-b]="scrolled()"
+      [class.border-ink-200]="scrolled()"
+    >
+      <div class="container-edge">
+        <div class="grid grid-cols-3 items-center h-20">
+          <!-- Left nav -->
+          <nav class="hidden md:flex items-center gap-10 text-sm">
             <a
-              routerLink="/"
-              routerLinkActive="text-indigo-600"
-              [routerLinkActiveOptions]="{ exact: true }"
-              class="hover:text-indigo-600 transition-colors"
-              >Home</a
+              routerLink="/products"
+              routerLinkActive="text-ink"
+              class="text-ink-500 hover:text-ink transition-colors"
+              >Shop</a
             >
             <a
               routerLink="/products"
-              routerLinkActive="text-indigo-600"
-              class="hover:text-indigo-600 transition-colors"
-              >Products</a
+              [queryParams]="{ sort: 'newest' }"
+              class="text-ink-500 hover:text-ink transition-colors"
+              >New</a
+            >
+            <a routerLink="/products" class="text-ink-500 hover:text-ink transition-colors"
+              >Stories</a
             >
             @if (auth.isAdmin()) {
               <a
                 routerLink="/admin"
-                routerLinkActive="text-indigo-600"
-                class="hover:text-indigo-600 transition-colors"
-                >Admin</a
+                routerLinkActive="text-ink"
+                class="text-ink-500 hover:text-ink transition-colors"
+                >Studio</a
               >
             }
-          </div>
+          </nav>
 
-          <!-- Right Actions -->
-          <div class="flex items-center gap-3">
+          <!-- Centered wordmark -->
+          <a
+            routerLink="/"
+            class="justify-self-center font-medium text-base tracking-[0.32em] uppercase text-ink"
+          >
+            Shopzone
+          </a>
+
+          <!-- Right actions -->
+          <div class="justify-self-end flex items-center gap-8 text-sm">
+            <button
+              type="button"
+              class="hidden sm:block text-ink-500 hover:text-ink transition-colors"
+              (click)="toggleSearch()"
+              aria-label="Search"
+            >
+              Search
+            </button>
+
             @if (auth.isAuthenticated()) {
-              <!-- Wishlist -->
               <a
                 routerLink="/wishlist"
-                class="p-2 text-gray-500 hover:text-indigo-600 transition-colors hidden sm:block"
-                title="Wishlist"
+                class="hidden sm:block text-ink-500 hover:text-ink transition-colors"
+                title="Saved"
               >
-                <svg
-                  width="22"
-                  height="22"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
-                  />
-                </svg>
+                Saved
               </a>
 
-              <!-- Cart Icon with badge -->
-              <button
-                (click)="cartService.open()"
-                class="relative p-2 text-gray-500 hover:text-indigo-600 transition-colors"
-                title="Cart"
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  class="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
-                  />
-                </svg>
-                @if (cartService.count() > 0) {
-                  <span
-                    class="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 min-w-[1.1rem] px-0.5 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
-                  >
-                    {{ cartService.count() > 99 ? '99+' : cartService.count() }}
-                  </span>
-                }
-              </button>
-
-              <!-- User Menu -->
               <div class="relative">
                 <button
                   (click)="toggleMenu()"
-                  class="flex items-center gap-2 text-sm text-gray-700 hover:text-indigo-600 transition-colors"
+                  class="text-ink-500 hover:text-ink transition-colors"
                 >
-                  <div
-                    class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center font-semibold text-indigo-600 text-xs"
-                  >
-                    {{ initials() }}
-                  </div>
-                  <span class="hidden sm:block">{{ auth.currentUser()?.name }}</span>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  Account
                 </button>
 
                 @if (menuOpen()) {
                   <div
-                    class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50"
+                    class="absolute right-0 mt-4 w-56 bg-paper border border-ink-200 py-2 z-50 shadow-sm rounded-md"
                     (click)="closeMenu()"
                   >
+                    <div class="px-5 pt-2 pb-3 border-b border-ink-100">
+                      <p class="text-2xs uppercase tracking-widest text-ink-400">Signed in</p>
+                      <p class="text-sm text-ink mt-1 truncate">{{ auth.currentUser()?.name }}</p>
+                    </div>
                     <a
                       routerLink="/account"
-                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      class="block px-5 py-2.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+                      >My Account</a
                     >
-                      My Account
-                    </a>
-                    <a
-                      routerLink="/wishlist"
-                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Wishlist
-                    </a>
                     <a
                       routerLink="/orders"
-                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      class="block px-5 py-2.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+                      >Orders</a
                     >
-                      Orders
-                    </a>
-                    <hr class="my-1 border-gray-100" />
+                    <a
+                      routerLink="/wishlist"
+                      class="block px-5 py-2.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+                      >Saved Items</a
+                    >
                     <button
                       (click)="auth.logout()"
-                      class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      class="w-full text-left px-5 py-2.5 text-sm text-ink-500 hover:bg-ink-50 hover:text-ink transition-colors border-t border-ink-100 mt-1"
                     >
                       Sign Out
                     </button>
@@ -166,27 +111,25 @@ import { CartService } from '../../../core/services/cart.service';
                 }
               </div>
             } @else {
-              <a
-                routerLink="/auth/login"
-                class="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
+              <a routerLink="/auth/login" class="text-ink-500 hover:text-ink transition-colors"
+                >Sign In</a
               >
-                Sign In
-              </a>
-              <a
-                routerLink="/auth/register"
-                class="text-sm font-medium bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Get Started
-              </a>
             }
+
+            <button
+              (click)="cartService.open()"
+              class="text-ink-500 hover:text-ink transition-colors tabular"
+              title="Bag"
+            >
+              Bag <span class="text-ink-400">({{ cartService.count() }})</span>
+            </button>
           </div>
         </div>
       </div>
-    </nav>
+    </header>
 
-    <!-- Overlay to close menu -->
     @if (menuOpen()) {
-      <div class="fixed inset-0 z-40" (click)="closeMenu()"></div>
+      <div class="fixed inset-0 z-30" (click)="closeMenu()"></div>
     }
   `,
 })
@@ -194,21 +137,20 @@ export class NavbarComponent {
   readonly auth = inject(AuthService);
   readonly cartService = inject(CartService);
   readonly menuOpen = signal(false);
+  readonly scrolled = signal(false);
 
-  readonly initials = () => {
-    const name = this.auth.currentUser()?.name ?? '';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  @HostListener('window:scroll')
+  onScroll() {
+    this.scrolled.set(window.scrollY > 8);
+  }
 
   toggleMenu() {
     this.menuOpen.update((v) => !v);
   }
   closeMenu() {
     this.menuOpen.set(false);
+  }
+  toggleSearch() {
+    /* hook for future search overlay */
   }
 }

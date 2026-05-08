@@ -7,144 +7,117 @@ import { AdminService, AdminUserRow, PaginatedMeta } from '../../../core/service
   selector: 'app-admin-users',
   imports: [DatePipe, TitleCasePipe, FormsModule],
   template: `
-    <div class="p-8">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Users</h1>
-        <div class="relative">
-          <input
-            type="text"
-            [(ngModel)]="searchQuery"
-            (ngModelChange)="onSearch()"
-            placeholder="Search by name or email…"
-            class="text-sm border border-gray-200 rounded-lg pl-9 pr-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
-          />
-          <svg
-            class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-            />
-          </svg>
+    <section class="border-b border-ink-200 bg-paper">
+      <div class="px-10 py-12 flex items-end justify-between gap-6">
+        <div>
+          <p class="label mb-3">— Studio · People</p>
+          <h1 class="font-light text-5xl">Customers.</h1>
         </div>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearch()"
+          placeholder="Search by name or email…"
+          class="bg-transparent border-0 border-b border-ink-300 text-sm focus:border-ink focus:ring-0 focus:outline-none w-64 px-0 py-2"
+        />
       </div>
+    </section>
 
+    <div class="px-10 py-10">
       @if (loading()) {
-        <div class="space-y-2">
+        <div class="space-y-px">
           @for (_ of [1, 2, 3, 4, 5]; track $index) {
-            <div class="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
+            <div class="h-16 bg-ink-50 animate-pulse"></div>
           }
         </div>
       }
 
       @if (!loading()) {
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-gray-50 border-b border-gray-100">
-                <tr class="text-left text-xs text-gray-500">
-                  <th class="px-4 py-3 font-semibold">User</th>
-                  <th class="px-4 py-3 font-semibold">Role</th>
-                  <th class="px-4 py-3 font-semibold">Orders</th>
-                  <th class="px-4 py-3 font-semibold">Joined</th>
-                  <th class="px-4 py-3 font-semibold">Status</th>
-                  <th class="px-4 py-3 font-semibold">Action</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-50">
-                @for (user of users(); track user.id) {
-                  <tr
-                    class="hover:bg-gray-50 transition-colors"
-                    [class.opacity-50]="togglingId() === user.id"
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-ink text-left">
+              <th class="pb-3 label">Customer</th>
+              <th class="pb-3 label">Role</th>
+              <th class="pb-3 label text-center">Orders</th>
+              <th class="pb-3 label">Joined</th>
+              <th class="pb-3 label">Status</th>
+              <th class="pb-3 label text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr
+                class="border-b border-ink-200 hover:bg-ink-50 transition-colors"
+                [class.opacity-50]="togglingId() === user.id"
+              >
+                <td class="py-4">
+                  <p class="text-base leading-tight">{{ user.name }}</p>
+                  <p class="text-2xs uppercase tracking-widest text-ink-400 mt-0.5">
+                    {{ user.email }}
+                  </p>
+                </td>
+                <td class="py-4">
+                  <span class="badge border" [class]="roleClass(user.role)">{{
+                    user.role | titlecase
+                  }}</span>
+                </td>
+                <td class="py-4 font-mono text-sm text-center">{{ user.orderCount }}</td>
+                <td class="py-4 text-sm text-ink-500 whitespace-nowrap">
+                  {{ user.createdAt | date: 'dd MMM yyyy' }}
+                </td>
+                <td class="py-4">
+                  @if (user.isBlocked) {
+                    <span class="badge border border-ink text-ink">Blocked</span>
+                  } @else {
+                    <span class="badge border border-ink text-ink">Active</span>
+                  }
+                </td>
+                <td class="py-4 text-right">
+                  <button
+                    (click)="toggleBlock(user)"
+                    [disabled]="togglingId() === user.id"
+                    class="text-2xs uppercase tracking-widest transition-colors disabled:opacity-50"
+                    [class.text-ink]="!user.isBlocked"
+                    [class.hover:text-ink]="!user.isBlocked"
+                    [class.text-ink-500]="user.isBlocked"
+                    [class.hover:text-ink]="user.isBlocked"
                   >
-                    <td class="px-4 py-3">
-                      <p class="font-medium text-gray-900">{{ user.name }}</p>
-                      <p class="text-xs text-gray-400">{{ user.email }}</p>
-                    </td>
-                    <td class="px-4 py-3">
-                      <span
-                        class="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        [class.bg-purple-100]="user.role === 'super_admin'"
-                        [class.text-purple-700]="user.role === 'super_admin'"
-                        [class.bg-indigo-100]="user.role === 'admin'"
-                        [class.text-indigo-700]="user.role === 'admin'"
-                        [class.bg-gray-100]="user.role === 'customer'"
-                        [class.text-gray-600]="user.role === 'customer'"
-                        >{{ user.role | titlecase }}</span
-                      >
-                    </td>
-                    <td class="px-4 py-3 text-gray-600 text-center">{{ user.orderCount }}</td>
-                    <td class="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {{ user.createdAt | date: 'dd MMM yyyy' }}
-                    </td>
-                    <td class="px-4 py-3">
-                      @if (user.isBlocked) {
-                        <span
-                          class="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600"
-                          >Blocked</span
-                        >
-                      } @else {
-                        <span
-                          class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700"
-                          >Active</span
-                        >
-                      }
-                    </td>
-                    <td class="px-4 py-3">
-                      <button
-                        (click)="toggleBlock(user)"
-                        [disabled]="togglingId() === user.id"
-                        class="text-xs px-2 py-1 rounded-lg border transition-colors disabled:opacity-50"
-                        [class.border-red-100]="!user.isBlocked"
-                        [class.text-red-500]="!user.isBlocked"
-                        [class.hover:border-red-200]="!user.isBlocked"
-                        [class.border-gray-200]="user.isBlocked"
-                        [class.text-gray-600]="user.isBlocked"
-                        [class.hover:bg-gray-50]="user.isBlocked"
-                      >
-                        {{ user.isBlocked ? 'Unblock' : 'Block' }}
-                      </button>
-                    </td>
-                  </tr>
-                }
-                @if (users().length === 0) {
-                  <tr>
-                    <td colspan="6" class="px-4 py-12 text-center text-gray-400 text-sm">
-                      No users found
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    {{ user.isBlocked ? 'Unblock' : 'Block' }}
+                  </button>
+                </td>
+              </tr>
+            }
+            @if (users().length === 0) {
+              <tr>
+                <td colspan="6" class="py-16 text-center">
+                  <p class="text-3xl font-light">No customers.</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
 
         @if (meta(); as m) {
           @if (m.totalPages > 1) {
-            <div class="flex items-center justify-between mt-4 text-sm text-gray-500">
-              <span
+            <div class="flex items-center justify-between mt-8 pt-6 border-t border-ink-200">
+              <span class="text-2xs uppercase tracking-widest text-ink-500"
                 >{{ (m.page - 1) * m.limit + 1 }}–{{ min(m.page * m.limit, m.total) }} of
                 {{ m.total }}</span
               >
-              <div class="flex gap-2">
+              <div class="flex gap-6">
                 <button
                   (click)="goToPage(m.page - 1)"
                   [disabled]="m.page === 1"
-                  class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
+                  class="text-2xs uppercase tracking-widest hover:text-ink transition-colors disabled:opacity-30"
                 >
-                  Prev
+                  ← Previous
                 </button>
                 <button
                   (click)="goToPage(m.page + 1)"
                   [disabled]="m.page === m.totalPages"
-                  class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
+                  class="text-2xs uppercase tracking-widest hover:text-ink transition-colors disabled:opacity-30"
                 >
-                  Next
+                  Next →
                 </button>
               </div>
             </div>
@@ -206,6 +179,12 @@ export class AdminUsersComponent implements OnInit {
       },
       error: () => this.togglingId.set(null),
     });
+  }
+
+  roleClass(role: string): string {
+    if (role === 'super_admin') return 'border-ink bg-ink text-paper';
+    if (role === 'admin') return 'border-ink text-ink';
+    return 'border-ink-300 text-ink-500';
   }
 
   min(a: number, b: number): number {

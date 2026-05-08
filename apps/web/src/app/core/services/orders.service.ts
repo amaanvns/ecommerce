@@ -9,8 +9,10 @@ export interface Order {
   status: string;
   paymentStatus: string;
   subtotal: string;
+  discount: string;
   total: string;
   currency: string;
+  couponId: string | null;
   shippingAddress: Record<string, string>;
   notes: string | null;
   placedAt: string;

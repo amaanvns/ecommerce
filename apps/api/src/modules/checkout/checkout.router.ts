@@ -12,10 +12,12 @@ import {
   orders,
   orderItems,
   payments,
+  coupons,
 } from '../../db/schema/index.js';
 import { authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
 import { env } from '../../config/env.js';
+import { validateAndCalculate } from '../coupons/coupon-helpers.js';
 
 export const checkoutRouter = Router();
 checkoutRouter.use(authenticate);
@@ -48,6 +50,7 @@ function generateOrderNumber(): string {
 const createOrderSchema = z.object({
   shippingAddress: addressSchema,
   notes: z.string().optional(),
+  couponCode: z.string().trim().min(1).optional(),
 });
 
 checkoutRouter.post('/create-order', async (req, res, next) => {
@@ -90,7 +93,17 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
     }
 
     const subtotal = cartRows.reduce((sum, i) => sum + i.qty * +i.priceSnapshot, 0);
-    const total = subtotal; // No tax/shipping for now
+
+    // Apply coupon if provided
+    let couponId: string | null = null;
+    let discount = 0;
+    if (body.data.couponCode) {
+      const resolved = await validateAndCalculate(body.data.couponCode, subtotal, userId);
+      couponId = resolved.id;
+      discount = resolved.discount;
+    }
+
+    const total = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
 
     const razorpay = getRazorpay();
 
@@ -109,9 +122,11 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
         orderNumber,
         userId,
         subtotal: subtotal.toFixed(2),
+        discount: discount.toFixed(2),
         total: total.toFixed(2),
         shippingAddress: body.data.shippingAddress,
         notes: body.data.notes,
+        couponId,
         status: 'pending',
         paymentStatus: 'pending',
       })
@@ -220,6 +235,14 @@ checkoutRouter.post('/verify-payment', async (req, res, next) => {
               .where(eq(productVariants.id, item.variantId))
           : Promise.resolve(),
       ),
+
+      // Increment coupon usage if one was applied
+      order.couponId
+        ? db
+            .update(coupons)
+            .set({ usedCount: sql`${coupons.usedCount} + 1` })
+            .where(eq(coupons.id, order.couponId))
+        : Promise.resolve(),
     ]);
 
     // Clear cart

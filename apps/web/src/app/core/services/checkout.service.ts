@@ -63,10 +63,15 @@ export class CheckoutService {
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiUrl;
 
-  createOrder(shippingAddress: ShippingAddress, notes?: string): Observable<CreateOrderResponse> {
+  createOrder(
+    shippingAddress: ShippingAddress,
+    notes?: string,
+    couponCode?: string,
+  ): Observable<CreateOrderResponse> {
     return this.http.post<CreateOrderResponse>(`${this.api}/checkout/create-order`, {
       shippingAddress,
       notes,
+      couponCode,
     });
   }
 
