@@ -28,7 +28,13 @@ productsRouter.get('/', async (req, res, next) => {
 
     const where = [eq(products.isPublished, true), isNull(products.deletedAt)];
 
-    if (q) where.push(ilike(products.name, `%${q}%`));
+    // Full-text search against the weighted tsvector (name=A, brand=B, description=C).
+    // websearch_to_tsquery accepts natural phrasing, quoted exact matches, and -word exclusions.
+    if (q) {
+      where.push(
+        sql`search_vector @@ websearch_to_tsquery('english', ${q})` as ReturnType<typeof eq>,
+      );
+    }
     if (brand) where.push(ilike(products.brand, `%${brand}%`));
 
     // Filter by category slug — resolve to id first

@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogService, Category, ProductSummary } from '../../core/services/catalog.service';
+import { SeoService } from '../../core/services/seo.service';
 import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
 
 @Component({
@@ -183,6 +184,7 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
 export class HomeComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly catalog = inject(CatalogService);
+  private readonly seo = inject(SeoService);
 
   readonly categories = signal<Category[]>([]);
   readonly featured = signal<ProductSummary[]>([]);
@@ -206,6 +208,18 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.seo.apply({
+      title: 'Considered objects, made well',
+      description:
+        'A small, slow edit of pieces — designed to be lived with, mended, and passed on.',
+      url: '/',
+      type: 'website',
+    });
+    this.seo.setJsonLd([
+      { '@type': 'WebSite', name: 'Shopzone', url: '/' },
+      { '@type': 'Organization', name: 'Shopzone', url: '/' },
+    ]);
+
     this.catalog.getCategories().subscribe((res) => this.categories.set(res.data));
     this.catalog.getProducts({ limit: 4, sort: 'newest' }).subscribe({
       next: (res) => {

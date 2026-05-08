@@ -5,6 +5,8 @@ import { CatalogService, ProductDetail, ProductVariant } from '../../core/servic
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ReviewsService } from '../../core/services/reviews.service';
+import { SeoService } from '../../core/services/seo.service';
 import { ProductReviewsComponent } from '../../shared/components/product-reviews/product-reviews.component';
 
 @Component({
@@ -236,6 +238,8 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
 })
 export class ProductDetailComponent implements OnInit {
   private readonly catalogService = inject(CatalogService);
+  private readonly reviewsService = inject(ReviewsService);
+  private readonly seo = inject(SeoService);
   private readonly route = inject(ActivatedRoute);
   readonly cartService = inject(CartService);
   readonly wishlist = inject(WishlistService);
@@ -303,12 +307,104 @@ export class ProductDetailComponent implements OnInit {
             initial[k] = vals[0];
           }
           this.selectedAttrs.set(initial);
+          this.applySeo(res.data);
         },
         error: () => {
           this.product.set(null);
           this.loading.set(false);
+          this.seo.apply({
+            title: 'Product not found',
+            description: 'This product is no longer available.',
+            noindex: true,
+          });
         },
       });
+    });
+  }
+
+  private applySeo(product: ProductDetail): void {
+    const variant = product.variants[0];
+    const minPrice = product.variants.reduce(
+      (min, v) => (min === null || +v.price < min ? +v.price : min),
+      null as number | null,
+    );
+    const inStock = product.variants.some((v) => v.stockQty > 0);
+    const image = product.images[0]?.url;
+    const description =
+      product.description ?? `Shop ${product.name}${product.brand ? ' by ' + product.brand : ''}.`;
+
+    this.seo.apply({
+      title: product.name,
+      description,
+      url: `/products/${product.slug}`,
+      image,
+      type: 'product',
+    });
+
+    const productSchema: Record<string, unknown> = {
+      '@type': 'Product',
+      name: product.name,
+      description,
+      sku: variant?.sku,
+      brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+      image: product.images.map((i) => i.url),
+      offers:
+        minPrice != null
+          ? {
+              '@type': 'Offer',
+              price: minPrice.toFixed(2),
+              priceCurrency: 'INR',
+              availability: inStock
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+            }
+          : undefined,
+    };
+
+    const breadcrumbSchema: Record<string, unknown> = {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: '/' },
+        { '@type': 'ListItem', position: 2, name: 'Shop', item: '/products' },
+        ...(product.category
+          ? [
+              {
+                '@type': 'ListItem',
+                position: 3,
+                name: product.category.name,
+                item: `/products?category=${product.category.slug}`,
+              },
+              {
+                '@type': 'ListItem',
+                position: 4,
+                name: product.name,
+                item: `/products/${product.slug}`,
+              },
+            ]
+          : [
+              {
+                '@type': 'ListItem',
+                position: 3,
+                name: product.name,
+                item: `/products/${product.slug}`,
+              },
+            ]),
+      ],
+    };
+
+    // Pull aggregate rating from approved reviews and merge into Product
+    this.reviewsService.list(product.id).subscribe({
+      next: (reviewsRes) => {
+        if (reviewsRes.meta.total > 0) {
+          productSchema['aggregateRating'] = {
+            '@type': 'AggregateRating',
+            ratingValue: reviewsRes.meta.average.toFixed(2),
+            reviewCount: reviewsRes.meta.total,
+          };
+        }
+        this.seo.setJsonLd([productSchema, breadcrumbSchema]);
+      },
+      error: () => this.seo.setJsonLd([productSchema, breadcrumbSchema]),
     });
   }
 

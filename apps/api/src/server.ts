@@ -15,6 +15,7 @@ import { ordersRouter } from './modules/orders/orders.router.js';
 import { adminRouter } from './modules/admin/admin.router.js';
 import { reviewsRouter } from './modules/reviews/reviews.router.js';
 import { couponsRouter } from './modules/coupons/coupons.router.js';
+import { seoRouter } from './modules/seo/seo.router.js';
 
 const app = express();
 
@@ -51,6 +52,9 @@ app.use('/api/v1/orders', ordersRouter);
 app.use('/api/v1/reviews', reviewsRouter);
 app.use('/api/v1/coupons', couponsRouter);
 app.use('/api/v1/admin', adminRouter);
+
+// Sitemap + robots: served at root paths (not under /api) so search engines find them
+app.use('/', seoRouter);
 
 app.use(errorHandler);
 

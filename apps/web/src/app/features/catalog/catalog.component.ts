@@ -7,6 +7,7 @@ import {
   ProductListQuery,
   ProductSummary,
 } from '../../core/services/catalog.service';
+import { SeoService } from '../../core/services/seo.service';
 import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
 
 @Component({
@@ -195,6 +196,7 @@ export class CatalogComponent implements OnInit {
   private readonly catalogService = inject(CatalogService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly seo = inject(SeoService);
 
   readonly categories = signal<Category[]>([]);
   readonly products = signal<ProductSummary[]>([]);
@@ -238,8 +240,32 @@ export class CatalogComponent implements OnInit {
       this.currentPage.set(Number(params.get('page') ?? 1));
       this.minPrice = params.get('minPrice') ? Number(params.get('minPrice')) : null;
       this.maxPrice = params.get('maxPrice') ? Number(params.get('maxPrice')) : null;
+      this.applySeo();
       this.loadProducts();
     });
+  }
+
+  private applySeo(): void {
+    const cat = this.activeCategory();
+    const q = this.searchInput;
+    const title = q
+      ? `Search · ${q}`
+      : cat
+        ? `${cat.charAt(0).toUpperCase() + cat.slice(1)}`
+        : 'Shop all';
+    const description = q
+      ? `Search results for "${q}" in the Shopzone collection.`
+      : 'Browse the full Shopzone collection — considered objects, made well.';
+    // Don't index search-result and paginated pages (avoid duplicate-content penalties)
+    const noindex = !!q || this.currentPage() > 1;
+    this.seo.apply({
+      title,
+      description,
+      url: '/products',
+      type: 'website',
+      noindex,
+    });
+    this.seo.setJsonLd([]);
   }
 
   private loadProducts(): void {
