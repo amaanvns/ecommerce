@@ -9,8 +9,8 @@ import {
   pgEnum,
   timestamp,
 } from 'drizzle-orm/pg-core';
-import { users } from './users';
-import { productVariants } from './products';
+import { users } from './users.js';
+import { productVariants } from './products.js';
 
 export const orderStatusEnum = pgEnum('order_status', [
   'pending',
