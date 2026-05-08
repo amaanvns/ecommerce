@@ -71,8 +71,12 @@ import { CartService } from '../../../core/services/cart.service';
 
               <div class="relative">
                 <button
+                  type="button"
                   (click)="toggleMenu()"
                   class="text-ink-500 hover:text-ink transition-colors"
+                  [attr.aria-expanded]="menuOpen()"
+                  aria-haspopup="menu"
+                  aria-label="Account menu"
                 >
                   Account
                 </button>
@@ -117,11 +121,12 @@ import { CartService } from '../../../core/services/cart.service';
             }
 
             <button
+              type="button"
               (click)="cartService.open()"
               class="text-ink-500 hover:text-ink transition-colors tabular"
-              title="Bag"
+              [attr.aria-label]="'Open bag, ' + cartService.count() + ' items'"
             >
-              Bag <span class="text-ink-400">({{ cartService.count() }})</span>
+              Bag <span class="text-ink-400" aria-hidden="true">({{ cartService.count() }})</span>
             </button>
           </div>
         </div>

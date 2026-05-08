@@ -30,6 +30,12 @@
     font-weight: 300;
     letter-spacing: -0.025em;
   }
+
+  /* Visible keyboard focus on every interactive element. :focus-visible only
+     fires for keyboard nav, so mouse clicks don't get the ring. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ink ring-offset-2 ring-offset-paper;
+  }
 }
 
 @layer components {

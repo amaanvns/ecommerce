@@ -63,23 +63,30 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
                 [src]="activeImage()"
                 [alt]="product()!.name"
                 class="w-full h-full object-cover"
+                fetchpriority="high"
+                decoding="async"
               />
             </div>
             @if (product()!.images.length > 1) {
               <div class="grid grid-cols-5 gap-2">
                 @for (img of product()!.images; track img.id) {
                   <button
+                    type="button"
                     (click)="activeImageIdx.set($index)"
                     class="aspect-square overflow-hidden bg-ink-50 transition-all"
                     [class.ring-1]="activeImageIdx() === $index"
                     [class.ring-ink]="activeImageIdx() === $index"
                     [class.opacity-50]="activeImageIdx() !== $index"
                     [class.hover:opacity-100]="activeImageIdx() !== $index"
+                    [attr.aria-label]="'Show image ' + ($index + 1)"
+                    [attr.aria-pressed]="activeImageIdx() === $index"
                   >
                     <img
                       [src]="img.url"
                       [alt]="img.alt ?? product()!.name"
                       class="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </button>
                 }

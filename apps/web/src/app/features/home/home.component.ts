@@ -36,9 +36,18 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
     <section class="container-edge pb-24 lg:pb-32">
       <div class="aspect-[16/9] lg:aspect-[21/9] hover-zoom bg-ink-50">
         <img
-          src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=2200&q=80"
+          src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80"
+          srcset="
+            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=75   800w,
+            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80 1200w,
+            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1800&q=80 1800w,
+            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=2400&q=80 2400w
+          "
+          sizes="(min-width: 1280px) 1240px, 100vw"
           alt="The new collection"
           class="w-full h-full object-cover"
+          fetchpriority="high"
+          decoding="async"
         />
       </div>
       <div class="mt-6 flex items-baseline justify-between text-sm">

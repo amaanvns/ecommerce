@@ -15,9 +15,12 @@ import { AuthService } from '../../../core/services/auth.service';
         @if (product().image?.url) {
           <img
             [src]="product().image!.url"
+            [srcset]="srcset()"
+            sizes="(min-width: 1024px) 23vw, (min-width: 640px) 45vw, 50vw"
             [alt]="product().image!.alt ?? product().name"
             class="w-full h-full object-cover"
             loading="lazy"
+            decoding="async"
           />
         } @else {
           <div class="w-full h-full flex items-center justify-center text-ink-300">
@@ -40,9 +43,16 @@ import { AuthService } from '../../../core/services/auth.service';
 
         @if (auth.isAuthenticated()) {
           <button
+            type="button"
             (click)="toggleWishlist($event)"
-            class="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-paper/90 backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity hover:bg-paper"
-            [title]="wishlist.has(product().id) ? 'Remove' : 'Save'"
+            class="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-paper/90 backdrop-blur opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-paper"
+            [title]="wishlist.has(product().id) ? 'Remove from saved' : 'Save'"
+            [attr.aria-label]="
+              (wishlist.has(product().id) ? 'Remove ' : 'Save ') +
+              product().name +
+              (wishlist.has(product().id) ? ' from saved' : ' to saved')
+            "
+            [attr.aria-pressed]="wishlist.has(product().id)"
           >
             <svg
               width="14"
@@ -51,6 +61,7 @@ import { AuthService } from '../../../core/services/auth.service';
               [attr.fill]="wishlist.has(product().id) ? 'currentColor' : 'none'"
               stroke="currentColor"
               stroke-width="1.5"
+              aria-hidden="true"
             >
               <path
                 stroke-linecap="round"
@@ -91,6 +102,18 @@ export class ProductCardComponent {
     return (
       !!this.product().compareAtPrice && +this.product().compareAtPrice! > +this.product().minPrice!
     );
+  }
+
+  /**
+   * Build a responsive srcset for Unsplash-hosted product images. Unsplash supports
+   * width-based query params, so we just swap the `w=` value. For non-Unsplash
+   * URLs, fall back to the original.
+   */
+  srcset(): string {
+    const url = this.product().image?.url ?? '';
+    if (!url.includes('images.unsplash.com')) return '';
+    const swap = (w: number) => url.replace(/([?&])w=\d+/, `$1w=${w}`);
+    return [`${swap(400)} 400w`, `${swap(600)} 600w`, `${swap(900)} 900w`].join(', ');
   }
 
   toggleWishlist(event: Event): void {

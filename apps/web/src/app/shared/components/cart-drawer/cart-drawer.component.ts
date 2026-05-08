@@ -10,10 +10,14 @@ import { CartService } from '../../../core/services/cart.service';
     <div
       class="fixed inset-0 bg-ink/50 z-40 animate-fade-in backdrop-blur-sm"
       (click)="cart.close()"
+      aria-hidden="true"
     ></div>
 
     <aside
       class="fixed right-0 top-0 h-full w-full max-w-md bg-paper z-50 flex flex-col animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Shopping bag"
     >
       <!-- Header -->
       <div class="flex items-center justify-between px-8 py-6 border-b border-ink-200">
