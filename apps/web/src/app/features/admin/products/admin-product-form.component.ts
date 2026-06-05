@@ -158,6 +158,23 @@ function variantToForm(v: ProductVariant): VariantForm {
             </button>
             <span class="text-2xs uppercase tracking-widest">Published</span>
           </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              (click)="codAvailable = !codAvailable"
+              class="relative inline-flex items-center w-10 h-5 transition-colors focus:outline-none"
+              [class.bg-ink]="codAvailable"
+              [class.bg-ink-200]="!codAvailable"
+            >
+              <span
+                class="w-4 h-4 bg-paper transition-transform"
+                [class.translate-x-5]="codAvailable"
+                [class.translate-x-0.5]="!codAvailable"
+              ></span>
+            </button>
+            <span class="text-2xs uppercase tracking-widest">Cash on Delivery</span>
+          </div>
         </div>
 
         <div class="flex gap-4 py-8">
@@ -512,6 +529,7 @@ export class AdminProductFormComponent implements OnInit {
   description = '';
   categoryId = '';
   isPublished = false;
+  codAvailable = false;
 
   readonly categories = signal<Category[]>([]);
 
@@ -557,6 +575,7 @@ export class AdminProductFormComponent implements OnInit {
         this.description = p.description ?? '';
         this.categoryId = p.categoryId ?? '';
         this.isPublished = p.isPublished;
+        this.codAvailable = p.codAvailable ?? false;
         this.variants.set(p.variants);
         this.images.set(p.images ?? []);
         this.pageLoading.set(false);
@@ -593,6 +612,7 @@ export class AdminProductFormComponent implements OnInit {
       description: this.description.trim() || undefined,
       categoryId: this.categoryId || null,
       isPublished: this.isPublished,
+      codAvailable: this.codAvailable,
     };
 
     const req$ = this.isEditMode()

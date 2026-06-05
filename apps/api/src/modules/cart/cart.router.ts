@@ -9,20 +9,12 @@ import {
   products,
   productImages,
 } from '../../db/schema/index.js';
-import { authenticate } from '../../middleware/auth.js';
+import { optionalAuthenticate, authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
+import { resolveCart, CART_COOKIE, cartCookieClearOptions } from './cart-helpers.js';
 
 export const cartRouter = Router();
-cartRouter.use(authenticate);
-
-// Get or create cart for current user, then return with full item details
-async function getOrCreateCart(userId: string) {
-  let [cart] = await db.select().from(carts).where(eq(carts.userId, userId)).limit(1);
-  if (!cart) {
-    [cart] = await db.insert(carts).values({ userId }).returning();
-  }
-  return cart;
-}
+cartRouter.use(optionalAuthenticate);
 
 async function buildCartResponse(cartId: string) {
   const rows = await db
@@ -40,6 +32,7 @@ async function buildCartResponse(cartId: string) {
       productName: products.name,
       productSlug: products.slug,
       productBrand: products.brand,
+      codAvailable: products.codAvailable,
     })
     .from(cartItems)
     .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
@@ -73,7 +66,7 @@ async function buildCartResponse(cartId: string) {
 // GET /api/v1/cart
 cartRouter.get('/', async (req, res, next) => {
   try {
-    const cart = await getOrCreateCart(req.user!.sub);
+    const cart = await resolveCart(req, res);
     const items = await buildCartResponse(cart.id);
     const total = items.reduce((sum, i) => sum + i.qty * +i.priceSnapshot, 0);
     res.json({ data: { id: cart.id, items, total: total.toFixed(2) } });
@@ -111,7 +104,7 @@ cartRouter.post('/items', async (req, res, next) => {
     if (!variant) throw new AppError(404, 'Variant not found');
     if (variant.stockQty < qty) throw new AppError(400, 'Insufficient stock');
 
-    const cart = await getOrCreateCart(req.user!.sub);
+    const cart = await resolveCart(req, res);
 
     // Upsert: if same variant already in cart, increment qty
     const [existing] = await db
@@ -155,7 +148,7 @@ cartRouter.patch('/items/:itemId', async (req, res, next) => {
     }
     const { qty } = body.data;
 
-    const cart = await getOrCreateCart(req.user!.sub);
+    const cart = await resolveCart(req, res);
 
     const [item] = await db
       .select()
@@ -184,7 +177,7 @@ cartRouter.patch('/items/:itemId', async (req, res, next) => {
 // DELETE /api/v1/cart/items/:itemId — remove single item
 cartRouter.delete('/items/:itemId', async (req, res, next) => {
   try {
-    const cart = await getOrCreateCart(req.user!.sub);
+    const cart = await resolveCart(req, res);
 
     const [item] = await db
       .select()
@@ -208,10 +201,65 @@ cartRouter.delete('/items/:itemId', async (req, res, next) => {
 // DELETE /api/v1/cart — clear all items
 cartRouter.delete('/', async (req, res, next) => {
   try {
-    const cart = await getOrCreateCart(req.user!.sub);
+    const cart = await resolveCart(req, res);
     await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
     await db.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cart.id));
     res.json({ data: { id: cart.id, items: [], total: '0.00' } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/v1/cart/merge — fold a guest (cookie) cart into the logged-in user's cart
+cartRouter.post('/merge', authenticate, async (req, res, next) => {
+  try {
+    const sessionId = req.cookies?.[CART_COOKIE] as string | undefined;
+    const userCart = await resolveCart(req, res); // req.user is set → user cart
+
+    if (sessionId) {
+      const [guestCart] = await db
+        .select()
+        .from(carts)
+        .where(eq(carts.sessionId, sessionId))
+        .limit(1);
+
+      if (guestCart && guestCart.id !== userCart.id) {
+        const guestItems = await db
+          .select()
+          .from(cartItems)
+          .where(eq(cartItems.cartId, guestCart.id));
+
+        for (const gi of guestItems) {
+          const [existing] = await db
+            .select({ id: cartItems.id, qty: cartItems.qty })
+            .from(cartItems)
+            .where(and(eq(cartItems.cartId, userCart.id), eq(cartItems.variantId, gi.variantId)))
+            .limit(1);
+
+          if (existing) {
+            await db
+              .update(cartItems)
+              .set({ qty: Math.min(existing.qty + gi.qty, 99) })
+              .where(eq(cartItems.id, existing.id));
+          } else {
+            await db.insert(cartItems).values({
+              cartId: userCart.id,
+              variantId: gi.variantId,
+              qty: gi.qty,
+              priceSnapshot: gi.priceSnapshot,
+            });
+          }
+        }
+
+        await db.delete(carts).where(eq(carts.id, guestCart.id)); // cascades cart_items
+      }
+
+      res.clearCookie(CART_COOKIE, cartCookieClearOptions);
+    }
+
+    const items = await buildCartResponse(userCart.id);
+    const total = items.reduce((sum, i) => sum + i.qty * +i.priceSnapshot, 0);
+    res.json({ data: { id: userCart.id, items, total: total.toFixed(2) } });
   } catch (err) {
     next(err);
   }

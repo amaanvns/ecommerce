@@ -1,11 +1,44 @@
 import { Router } from 'express';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { z } from 'zod';
+import { eq, and, desc, sql, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { orders, orderItems, payments, productVariants } from '../../db/schema/index.js';
 import { authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
 
 export const ordersRouter = Router();
+
+// GET /api/v1/orders/guest/:id?email=… — public lookup for guest orders (no account).
+// Defined BEFORE the authenticate guard so guests can view their confirmation.
+const guestLookupSchema = z.object({ email: z.string().email() });
+
+ordersRouter.get('/guest/:id', async (req, res, next) => {
+  try {
+    const query = guestLookupSchema.safeParse(req.query);
+    if (!query.success) throw new AppError(400, 'A valid email is required');
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.id, req.params.id),
+          isNull(orders.userId),
+          sql`lower(${orders.contactEmail}) = lower(${query.data.email})`,
+        ),
+      )
+      .limit(1);
+
+    if (!order) throw new AppError(404, 'Order not found');
+
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+
+    res.json({ data: { ...order, items } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 ordersRouter.use(authenticate);
 
 // GET /api/v1/orders — list user's orders

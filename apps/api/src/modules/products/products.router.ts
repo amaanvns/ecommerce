@@ -85,6 +85,7 @@ productsRouter.get('/', async (req, res, next) => {
           slug: products.slug,
           brand: products.brand,
           categoryId: products.categoryId,
+          codAvailable: products.codAvailable,
           createdAt: products.createdAt,
         })
         .from(products)

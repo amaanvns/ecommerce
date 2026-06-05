@@ -35,6 +35,7 @@ export const orders = pgTable('orders', {
   id: uuid('id').primaryKey().defaultRandom(),
   orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
   userId: uuid('user_id').references(() => users.id),
+  contactEmail: varchar('contact_email', { length: 255 }),
   status: orderStatusEnum('status').notNull().default('pending'),
   subtotal: numeric('subtotal', { precision: 10, scale: 2 }).notNull(),
   discount: numeric('discount', { precision: 10, scale: 2 }).notNull().default('0'),

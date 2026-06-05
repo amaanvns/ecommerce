@@ -20,6 +20,7 @@ export interface ProductSummary {
   slug: string;
   brand: string | null;
   categoryId: string | null;
+  codAvailable?: boolean;
   image: { url: string; alt: string | null } | null;
   minPrice: string | null;
   maxPrice: string | null;

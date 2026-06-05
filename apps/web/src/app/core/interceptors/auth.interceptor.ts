@@ -18,8 +18,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
+  // withCredentials lets the browser send/receive the guest-cart session cookie
   const token = tokenService.getAccessToken();
-  const authedReq = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
+  const authedReq = req.clone({
+    withCredentials: true,
+    ...(token ? { setHeaders: { Authorization: `Bearer ${token}` } } : {}),
+  });
 
   return next(authedReq).pipe(
     catchError((err: HttpErrorResponse) => {

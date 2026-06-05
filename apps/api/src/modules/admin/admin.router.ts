@@ -6,6 +6,7 @@ import {
   users,
   orders,
   orderItems,
+  payments,
   products,
   productVariants,
   productImages,
@@ -144,6 +145,41 @@ adminRouter.patch('/orders/:id/status', async (req, res, next) => {
   }
 });
 
+const updatePaymentStatusSchema = z.object({
+  paymentStatus: z.enum(['pending', 'paid', 'refunded']),
+});
+
+// Mark an order's payment as collected/refunded — primarily for COD orders
+adminRouter.patch('/orders/:id/payment-status', async (req, res, next) => {
+  try {
+    const body = updatePaymentStatusSchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.flatten() });
+      return;
+    }
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, req.params.id)).limit(1);
+
+    if (!order) throw new AppError(404, 'Order not found');
+
+    const [updated] = await db
+      .update(orders)
+      .set({ paymentStatus: body.data.paymentStatus, updatedAt: new Date() })
+      .where(eq(orders.id, order.id))
+      .returning();
+
+    // Keep the related payment row in sync (COD orders have a pending payment record)
+    await db
+      .update(payments)
+      .set({ status: body.data.paymentStatus })
+      .where(eq(payments.orderId, order.id));
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── Products ────────────────────────────────────────────────────────────────
 
 adminRouter.get('/products', async (req, res, next) => {
@@ -203,6 +239,7 @@ const createProductSchema = z.object({
   description: z.string().optional(),
   categoryId: z.string().uuid().nullable().optional(),
   isPublished: z.boolean().default(false),
+  codAvailable: z.boolean().optional(),
 });
 
 adminRouter.post('/products', async (req, res, next) => {
@@ -260,6 +297,7 @@ const updateProductSchema = z.object({
   brand: z.string().optional(),
   description: z.string().optional(),
   categoryId: z.string().uuid().nullable().optional(),
+  codAvailable: z.boolean().optional(),
 });
 
 adminRouter.patch('/products/:id', async (req, res, next) => {

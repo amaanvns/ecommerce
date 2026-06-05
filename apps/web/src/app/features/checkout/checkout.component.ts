@@ -29,6 +29,28 @@ import { CouponPreview, CouponsService } from '../../core/services/coupons.servi
             <h2 class="text-2xl font-light tracking-tight mb-10">Shipping address</h2>
 
             <form [formGroup]="form" class="space-y-7">
+              @if (!auth.isAuthenticated()) {
+                <div>
+                  <label class="label-input">Email</label>
+                  <input
+                    formControlName="email"
+                    type="email"
+                    class="input-clean"
+                    [class.border-ink]="invalid('email')"
+                    placeholder="you@example.com"
+                  />
+                  @if (invalid('email')) {
+                    <p class="mt-1 text-xs text-ink">Enter a valid email</p>
+                  } @else {
+                    <p class="mt-1 text-xs text-ink-400">
+                      We'll send your order confirmation here.
+                      <a routerLink="/auth/login" class="link-underline text-ink-500"
+                        >Have an account?</a
+                      >
+                    </p>
+                  }
+                </div>
+              }
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label class="label-input">Full Name</label>
@@ -257,6 +279,51 @@ import { CouponPreview, CouponsService } from '../../core/services/coupons.servi
                 </span>
               </div>
 
+              <!-- Payment method -->
+              <div class="pb-6 space-y-3">
+                <p class="label-input mb-1">Payment method</p>
+                <label
+                  class="flex items-center gap-3 cursor-pointer border px-4 py-3 rounded transition-colors"
+                  [class.border-ink]="paymentMethod() === 'online'"
+                  [class.border-ink-200]="paymentMethod() !== 'online'"
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="online"
+                    [checked]="paymentMethod() === 'online'"
+                    (change)="paymentMethod.set('online')"
+                    class="accent-ink"
+                  />
+                  <span class="text-sm"
+                    >Pay online <span class="text-ink-400">(card / UPI)</span></span
+                  >
+                </label>
+
+                @if (codEligible()) {
+                  <label
+                    class="flex items-center gap-3 cursor-pointer border px-4 py-3 rounded transition-colors"
+                    [class.border-ink]="paymentMethod() === 'cod'"
+                    [class.border-ink-200]="paymentMethod() !== 'cod'"
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cod"
+                      [checked]="paymentMethod() === 'cod'"
+                      (change)="paymentMethod.set('cod')"
+                      class="accent-ink"
+                    />
+                    <span class="text-sm">Cash on Delivery</span>
+                  </label>
+                } @else {
+                  <p class="text-xs text-ink-400">
+                    Some items in your bag aren't eligible for Cash on Delivery, so only online
+                    payment is available.
+                  </p>
+                }
+              </div>
+
               @if (error()) {
                 <div class="mb-4 bg-ink-100 px-4 py-3 text-sm text-ink rounded">
                   {{ error() }}
@@ -264,10 +331,22 @@ import { CouponPreview, CouponsService } from '../../core/services/coupons.servi
               }
 
               <button (click)="pay()" [disabled]="processing()" class="btn-primary w-full">
-                {{ processing() ? 'Processing…' : 'Pay securely' }}
+                @if (processing()) {
+                  Processing…
+                } @else if (paymentMethod() === 'cod') {
+                  Place order
+                } @else {
+                  Pay securely
+                }
               </button>
 
-              <p class="mt-4 text-sm text-ink-400 text-center">Secured by Razorpay</p>
+              @if (paymentMethod() === 'online') {
+                <p class="mt-4 text-sm text-ink-400 text-center">Secured by Razorpay</p>
+              } @else {
+                <p class="mt-4 text-sm text-ink-400 text-center">
+                  Pay in cash when your order arrives
+                </p>
+              }
             </div>
           </div>
         </div>
@@ -286,6 +365,12 @@ export class CheckoutComponent implements OnInit {
   readonly processing = signal(false);
   readonly error = signal('');
 
+  // Payment method — COD only offered when every item in the bag allows it
+  readonly paymentMethod = signal<'online' | 'cod'>('online');
+  readonly codEligible = computed(
+    () => this.cart.items().length > 0 && this.cart.items().every((i) => i.codAvailable),
+  );
+
   // Coupon state
   readonly showCouponInput = signal(false);
   readonly couponCode = signal('');
@@ -302,6 +387,7 @@ export class CheckoutComponent implements OnInit {
   readonly objectKeys = Object.keys;
 
   readonly form = this.fb.group({
+    email: [''],
     name: ['', Validators.required],
     phone: ['', Validators.required],
     line1: ['', Validators.required],
@@ -315,7 +401,13 @@ export class CheckoutComponent implements OnInit {
 
   ngOnInit(): void {
     const user = this.auth.currentUser();
-    if (user) this.form.patchValue({ name: user.name });
+    if (user) {
+      this.form.patchValue({ name: user.name });
+    } else {
+      // Guests must supply a contact email for confirmation + order lookup
+      this.form.get('email')?.addValidators([Validators.required, Validators.email]);
+      this.form.get('email')?.updateValueAndValidity();
+    }
   }
 
   invalid(field: string): boolean {
@@ -370,9 +462,26 @@ export class CheckoutComponent implements OnInit {
       postalCode: v.postalCode!,
       country: v.country ?? 'IN',
     };
+    const contactEmail = this.auth.currentUser()?.email ?? v.email ?? undefined;
+
+    if (this.paymentMethod() === 'cod') {
+      this.checkoutService
+        .placeCodOrder(shippingAddress, v.notes ?? undefined, this.coupon()?.code, contactEmail)
+        .subscribe({
+          next: (res) => {
+            this.cart.load();
+            this.afterOrder(res.data.orderId, contactEmail);
+          },
+          error: (err) => {
+            this.error.set(err?.error?.error ?? 'Failed to place order. Please try again.');
+            this.processing.set(false);
+          },
+        });
+      return;
+    }
 
     this.checkoutService
-      .createOrder(shippingAddress, v.notes ?? undefined, this.coupon()?.code)
+      .createOrder(shippingAddress, v.notes ?? undefined, this.coupon()?.code, contactEmail)
       .subscribe({
         next: async (res) => {
           const { orderId, razorpayOrderId, amount, currency, keyId } = res.data;
@@ -406,9 +515,7 @@ export class CheckoutComponent implements OnInit {
                 .subscribe({
                   next: (verifyRes) => {
                     this.cart.load();
-                    this.router.navigate(['/orders', verifyRes.data.orderId], {
-                      queryParams: { success: '1' },
-                    });
+                    this.afterOrder(verifyRes.data.orderId, contactEmail);
                   },
                   error: () => {
                     this.error.set(
@@ -428,5 +535,14 @@ export class CheckoutComponent implements OnInit {
           this.processing.set(false);
         },
       });
+  }
+
+  /** Route to the right post-order page: logged-in → my orders; guest → confirmation. */
+  private afterOrder(orderId: string, email?: string): void {
+    if (this.auth.isAuthenticated()) {
+      this.router.navigate(['/orders', orderId], { queryParams: { success: '1' } });
+    } else {
+      this.router.navigate(['/order-confirmation', orderId], { state: { email } });
+    }
   }
 }

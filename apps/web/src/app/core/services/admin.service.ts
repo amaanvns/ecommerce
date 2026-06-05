@@ -65,6 +65,7 @@ export interface AdminProductDetail {
   description: string | null;
   categoryId: string | null;
   isPublished: boolean;
+  codAvailable: boolean;
   createdAt: string;
   variants: ProductVariant[];
   images: ProductImage[];
@@ -86,6 +87,7 @@ export interface ProductPayload {
   description?: string;
   categoryId?: string | null;
   isPublished?: boolean;
+  codAvailable?: boolean;
 }
 
 export interface AdminCoupon {
@@ -192,6 +194,15 @@ export class AdminService {
 
   updateOrderStatus(id: string, status: string): Observable<{ data: AdminOrderRow }> {
     return this.http.patch<{ data: AdminOrderRow }>(`${this.api}/orders/${id}/status`, { status });
+  }
+
+  updatePaymentStatus(
+    id: string,
+    paymentStatus: 'pending' | 'paid' | 'refunded',
+  ): Observable<{ data: AdminOrderRow }> {
+    return this.http.patch<{ data: AdminOrderRow }>(`${this.api}/orders/${id}/payment-status`, {
+      paymentStatus,
+    });
   }
 
   getProducts(

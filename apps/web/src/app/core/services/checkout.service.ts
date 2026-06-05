@@ -28,6 +28,8 @@ export interface VerifyPaymentResponse {
   data: { orderId: string; orderNumber: string };
 }
 
+export type PlaceCodResponse = VerifyPaymentResponse;
+
 // Razorpay global type (loaded via script tag)
 declare global {
   interface Window {
@@ -67,11 +69,27 @@ export class CheckoutService {
     shippingAddress: ShippingAddress,
     notes?: string,
     couponCode?: string,
+    contactEmail?: string,
   ): Observable<CreateOrderResponse> {
     return this.http.post<CreateOrderResponse>(`${this.api}/checkout/create-order`, {
       shippingAddress,
       notes,
       couponCode,
+      contactEmail,
+    });
+  }
+
+  placeCodOrder(
+    shippingAddress: ShippingAddress,
+    notes?: string,
+    couponCode?: string,
+    contactEmail?: string,
+  ): Observable<PlaceCodResponse> {
+    return this.http.post<PlaceCodResponse>(`${this.api}/checkout/place-cod`, {
+      shippingAddress,
+      notes,
+      couponCode,
+      contactEmail,
     });
   }
 

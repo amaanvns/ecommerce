@@ -33,6 +33,23 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
   }
 }
 
+/**
+ * Like `authenticate`, but never rejects: if a valid Bearer token is present it
+ * attaches `req.user`; otherwise it simply continues as an anonymous request.
+ * Used for guest-capable routes (cart, checkout) where login is optional.
+ */
+export function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return next();
+
+  try {
+    req.user = jwt.verify(header.slice(7), env.JWT_SECRET) as JwtPayload;
+  } catch {
+    // Ignore an invalid/expired token and proceed as a guest
+  }
+  next();
+}
+
 export function requireRole(...roles: JwtPayload['role'][]) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) return next(new AppError(401, 'Unauthenticated'));

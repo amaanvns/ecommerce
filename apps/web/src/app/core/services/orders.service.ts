@@ -53,6 +53,13 @@ export class OrdersService {
     return this.http.get<{ data: OrderDetail }>(`${this.api}/orders/${id}`);
   }
 
+  /** Public lookup for a guest order (no account) by id + the email used at checkout. */
+  getGuestOrder(id: string, email: string): Observable<{ data: OrderDetail }> {
+    return this.http.get<{ data: OrderDetail }>(`${this.api}/orders/guest/${id}`, {
+      params: { email },
+    });
+  }
+
   cancelOrder(id: string): Observable<{ data: Order }> {
     return this.http.post<{ data: Order }>(`${this.api}/orders/${id}/cancel`, {});
   }

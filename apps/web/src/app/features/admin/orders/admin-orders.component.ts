@@ -75,6 +75,15 @@ const ORDER_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'
                     <span class="badge border" [class]="paymentClass(order.paymentStatus)">
                       {{ order.paymentStatus | titlecase }}
                     </span>
+                    @if (order.paymentStatus === 'pending') {
+                      <button
+                        (click)="markPaid(order)"
+                        [disabled]="updating() === order.id"
+                        class="block mt-1.5 text-2xs uppercase tracking-widest text-ink-500 hover:text-ink transition-colors disabled:opacity-50 link-underline"
+                      >
+                        Mark paid
+                      </button>
+                    }
                   </td>
                   <td class="py-4 pr-8 font-mono text-sm text-right whitespace-nowrap">
                     {{ +order.total | currency: 'INR' : 'symbol' : '1.2-2' }}
@@ -180,6 +189,22 @@ export class AdminOrdersComponent implements OnInit {
       next: (res) => {
         this.orders.update((rows) =>
           rows.map((r) => (r.id === order.id ? { ...r, status: res.data.status } : r)),
+        );
+        this.updating.set(null);
+      },
+      error: () => this.updating.set(null),
+    });
+  }
+
+  markPaid(order: AdminOrderRow): void {
+    if (order.paymentStatus === 'paid') return;
+    this.updating.set(order.id);
+    this.adminService.updatePaymentStatus(order.id, 'paid').subscribe({
+      next: (res) => {
+        this.orders.update((rows) =>
+          rows.map((r) =>
+            r.id === order.id ? { ...r, paymentStatus: res.data.paymentStatus } : r,
+          ),
         );
         this.updating.set(null);
       },

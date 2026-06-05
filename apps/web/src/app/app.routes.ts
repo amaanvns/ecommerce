@@ -32,8 +32,15 @@ export const routes: Routes = [
         path: 'checkout',
         loadComponent: () =>
           import('./features/checkout/checkout.component').then((m) => m.CheckoutComponent),
-        canActivate: [authGuard],
         title: 'Checkout — Star Enterprises',
+      },
+      {
+        path: 'order-confirmation/:id',
+        loadComponent: () =>
+          import('./features/orders/order-confirmation.component').then(
+            (m) => m.OrderConfirmationComponent,
+          ),
+        title: 'Order Confirmed — Star Enterprises',
       },
       {
         path: 'orders',

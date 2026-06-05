@@ -22,6 +22,7 @@ export const products = pgTable(
     brand: varchar('brand', { length: 255 }),
     categoryId: uuid('category_id').references(() => categories.id),
     isPublished: boolean('is_published').notNull().default(false),
+    codAvailable: boolean('cod_available').notNull().default(false),
     searchVector: text('search_vector'),
     metaTitle: varchar('meta_title', { length: 255 }),
     metaDescription: text('meta_description'),

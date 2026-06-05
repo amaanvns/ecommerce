@@ -1,4 +1,5 @@
-import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -18,6 +19,7 @@ export interface CartItem {
   productName: string;
   productSlug: string;
   productBrand: string | null;
+  codAvailable: boolean;
   image: { url: string; alt: string | null } | null;
 }
 
@@ -30,6 +32,7 @@ export class CartService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
   private readonly api = environment.apiUrl;
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly items = signal<CartItem[]>([]);
   readonly isOpen = signal(false);
@@ -42,11 +45,15 @@ export class CartService {
 
   constructor() {
     effect(() => {
-      if (this.auth.isAuthenticated()) {
-        this.load();
+      const authed = this.auth.isAuthenticated();
+      // Only touch the cart in the browser — avoids SSR HTTP calls / orphan guest carts.
+      if (!this.isBrowser) return;
+      // Guests have a cookie-backed cart too; on login we merge it into the user cart.
+      if (authed) {
+        this.merge();
       } else {
-        this.items.set([]);
         this.isOpen.set(false);
+        this.load();
       }
     });
   }
@@ -59,6 +66,21 @@ export class CartService {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  /** Fold any guest (cookie) cart into the logged-in user's cart, then show it. */
+  merge(): void {
+    this.loading.set(true);
+    this.http.post<CartResponse>(`${this.api}/cart/merge`, {}).subscribe({
+      next: (res) => {
+        this.items.set(res.data.items);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.load();
+      },
     });
   }
 

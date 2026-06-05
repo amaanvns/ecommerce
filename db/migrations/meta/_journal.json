@@ -15,6 +15,20 @@
       "when": 1778000000000,
       "tag": "0001_fulltext_search",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779000000000,
+      "tag": "0002_cod_available",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779500000000,
+      "tag": "0003_guest_contact_email",
+      "breakpoints": true
     }
   ]
 }

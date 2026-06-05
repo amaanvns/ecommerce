@@ -2,25 +2,18 @@ import { Router } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import {
-  carts,
-  cartItems,
-  productVariants,
-  products,
-  orders,
-  orderItems,
-  payments,
-  coupons,
-} from '../../db/schema/index.js';
-import { authenticate } from '../../middleware/auth.js';
+import { cartItems, productVariants, products, orders, orderItems } from '../../db/schema/index.js';
+import { optionalAuthenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
 import { env } from '../../config/env.js';
 import { validateAndCalculate } from '../coupons/coupon-helpers.js';
+import { fulfillOrder } from './checkout-helpers.js';
+import { findCart } from '../cart/cart-helpers.js';
 
 export const checkoutRouter = Router();
-checkoutRouter.use(authenticate);
+checkoutRouter.use(optionalAuthenticate);
 
 const addressSchema = z.object({
   name: z.string().min(1),
@@ -32,6 +25,13 @@ const addressSchema = z.object({
   country: z.string().length(2).default('IN'),
   phone: z.string().optional(),
 });
+
+/** Resolve the email to attach to an order: account email, or guest-supplied email. */
+function resolveContactEmail(req: { user?: { email: string } }, guestEmail?: string): string {
+  const email = req.user?.email ?? guestEmail;
+  if (!email) throw new AppError(400, 'An email address is required to place your order');
+  return email;
+}
 
 function getRazorpay() {
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
@@ -51,6 +51,7 @@ const createOrderSchema = z.object({
   shippingAddress: addressSchema,
   notes: z.string().optional(),
   couponCode: z.string().trim().min(1).optional(),
+  contactEmail: z.string().email().optional(), // required for guests (no account email)
 });
 
 checkoutRouter.post('/create-order', async (req, res, next) => {
@@ -61,11 +62,11 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
       return;
     }
 
-    const userId = req.user!.sub;
+    const userId = req.user?.sub ?? null;
+    const contactEmail = resolveContactEmail(req, body.data.contactEmail);
 
-    // Get user's cart
-    const [cart] = await db.select().from(carts).where(eq(carts.userId, userId)).limit(1);
-
+    // Resolve the active cart (user cart or guest cookie cart)
+    const cart = await findCart(req);
     if (!cart) throw new AppError(400, 'Cart is empty');
 
     const cartRows = await db
@@ -121,6 +122,7 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
       .values({
         orderNumber,
         userId,
+        contactEmail,
         subtotal: subtotal.toFixed(2),
         discount: discount.toFixed(2),
         total: total.toFixed(2),
@@ -189,13 +191,17 @@ checkoutRouter.post('/verify-payment', async (req, res, next) => {
       throw new AppError(400, 'Payment verification failed — invalid signature');
     }
 
-    const userId = req.user!.sub;
+    const userId = req.user?.sub ?? null;
 
-    // Fetch the order (must belong to this user)
+    // Fetch the order — a logged-in user's own order, or a guest (userId IS NULL) order
     const [order] = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.id, orderId), eq(orders.userId, userId)))
+      .where(
+        userId
+          ? and(eq(orders.id, orderId), eq(orders.userId, userId))
+          : and(eq(orders.id, orderId), isNull(orders.userId)),
+      )
       .limit(1);
 
     if (!order) throw new AppError(404, 'Order not found');
@@ -204,57 +210,132 @@ checkoutRouter.post('/verify-payment', async (req, res, next) => {
       return;
     }
 
-    // Fetch order items to reduce stock
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+    // Mark confirmed + paid, record payment, decrement stock, bump coupon usage
+    await fulfillOrder(
+      { id: order.id, total: order.total, currency: order.currency, couponId: order.couponId },
+      {
+        orderStatus: 'confirmed',
+        paymentStatus: 'paid',
+        payment: {
+          gateway: 'razorpay',
+          gatewayRef: razorpayPaymentId,
+          status: 'paid',
+          rawResponse: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
+        },
+      },
+    );
 
-    // Update stock, order status, create payment record — all in a transaction-like batch
-    await Promise.all([
-      // Mark order as confirmed + paid
-      db
-        .update(orders)
-        .set({ status: 'confirmed', paymentStatus: 'paid', updatedAt: new Date() })
-        .where(eq(orders.id, order.id)),
-
-      // Record payment
-      db.insert(payments).values({
-        orderId: order.id,
-        gateway: 'razorpay',
-        gatewayRef: razorpayPaymentId,
-        amount: order.total,
-        currency: 'INR',
-        status: 'paid',
-        rawResponse: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
-      }),
-
-      // Decrement stock for each variant
-      ...items.map((item) =>
-        item.variantId
-          ? db
-              .update(productVariants)
-              .set({ stockQty: sql`${productVariants.stockQty} - ${item.qty}` })
-              .where(eq(productVariants.id, item.variantId))
-          : Promise.resolve(),
-      ),
-
-      // Increment coupon usage if one was applied
-      order.couponId
-        ? db
-            .update(coupons)
-            .set({ usedCount: sql`${coupons.usedCount} + 1` })
-            .where(eq(coupons.id, order.couponId))
-        : Promise.resolve(),
-    ]);
-
-    // Clear cart
-    const [cart] = await db
-      .select({ id: carts.id })
-      .from(carts)
-      .where(eq(carts.userId, userId))
-      .limit(1);
-
+    // Clear the cart that was checked out (user cart or guest cookie cart)
+    const cart = await findCart(req);
     if (cart) {
       await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
     }
+
+    res.json({ data: { orderId: order.id, orderNumber: order.orderNumber } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/v1/checkout/place-cod — place a Cash-on-Delivery order (no Razorpay)
+checkoutRouter.post('/place-cod', async (req, res, next) => {
+  try {
+    const body = createOrderSchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.flatten() });
+      return;
+    }
+
+    const userId = req.user?.sub ?? null;
+    const contactEmail = resolveContactEmail(req, body.data.contactEmail);
+
+    const cart = await findCart(req);
+    if (!cart) throw new AppError(400, 'Cart is empty');
+
+    const cartRows = await db
+      .select({
+        qty: cartItems.qty,
+        priceSnapshot: cartItems.priceSnapshot,
+        variantId: cartItems.variantId,
+        sku: productVariants.sku,
+        stockQty: productVariants.stockQty,
+        productName: products.name,
+        codAvailable: products.codAvailable,
+      })
+      .from(cartItems)
+      .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(eq(cartItems.cartId, cart.id));
+
+    if (cartRows.length === 0) throw new AppError(400, 'Cart is empty');
+
+    // Every item must be COD-eligible
+    if (cartRows.some((i) => !i.codAvailable)) {
+      throw new AppError(400, 'Some items in your bag are not available for Cash on Delivery');
+    }
+
+    // Validate stock for each item
+    for (const item of cartRows) {
+      if (item.stockQty < item.qty) {
+        throw new AppError(400, `Insufficient stock for "${item.productName}"`);
+      }
+    }
+
+    const subtotal = cartRows.reduce((sum, i) => sum + i.qty * +i.priceSnapshot, 0);
+
+    // Apply coupon if provided
+    let couponId: string | null = null;
+    let discount = 0;
+    if (body.data.couponCode) {
+      const resolved = await validateAndCalculate(body.data.couponCode, subtotal, userId);
+      couponId = resolved.id;
+      discount = resolved.discount;
+    }
+
+    const total = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
+
+    // Persist the order — confirmed immediately, payment pending until collected
+    const [order] = await db
+      .insert(orders)
+      .values({
+        orderNumber: generateOrderNumber(),
+        userId,
+        contactEmail,
+        subtotal: subtotal.toFixed(2),
+        discount: discount.toFixed(2),
+        total: total.toFixed(2),
+        shippingAddress: body.data.shippingAddress,
+        notes: body.data.notes,
+        couponId,
+        status: 'confirmed',
+        paymentStatus: 'pending',
+      })
+      .returning();
+
+    await db.insert(orderItems).values(
+      cartRows.map((i) => ({
+        orderId: order.id,
+        variantId: i.variantId,
+        productNameSnapshot: i.productName,
+        skuSnapshot: i.sku,
+        qty: i.qty,
+        unitPrice: i.priceSnapshot,
+        lineTotal: (i.qty * +i.priceSnapshot).toFixed(2),
+      })),
+    );
+
+    // Decrement stock, record COD payment (pending), bump coupon usage
+    await fulfillOrder(
+      { id: order.id, total: order.total, currency: order.currency, couponId: order.couponId },
+      {
+        orderStatus: 'confirmed',
+        paymentStatus: 'pending',
+        payment: { gateway: 'cod', status: 'pending' },
+      },
+    );
+
+    // Clear cart
+    await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
 
     res.json({ data: { orderId: order.id, orderNumber: order.orderNumber } });
   } catch (err) {
