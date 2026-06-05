@@ -35,6 +35,8 @@ app.use(
       // Allow same-origin / curl / health checks (no Origin header)
       if (!origin) return callback(null, true);
       if (clientOrigins.includes(origin)) return callback(null, true);
+      // Log every rejection so misconfigurations are visible in the host logs
+      logger.warn({ origin, allowed: clientOrigins }, 'CORS: origin rejected');
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,

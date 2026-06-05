@@ -65,7 +65,11 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
-/** CLIENT_URL parsed as an array — supports comma-separated origins for CORS. */
+/**
+ * CLIENT_URL parsed as an array — supports comma-separated origins for CORS.
+ * Trailing slashes are stripped so `https://x.vercel.app/` and `https://x.vercel.app`
+ * both match the browser's Origin header (which never has a trailing slash).
+ */
 export const clientOrigins = env.CLIENT_URL.split(',')
-  .map((s) => s.trim())
+  .map((s) => s.trim().replace(/\/+$/, ''))
   .filter(Boolean);
