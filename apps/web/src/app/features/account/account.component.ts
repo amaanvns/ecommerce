@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { OrdersService } from '../../core/services/orders.service';
 
 @Component({
   selector: 'app-account',
@@ -32,6 +33,54 @@ import { AuthService } from '../../core/services/auth.service';
         }
       </div>
 
+      <!-- Link a past guest order -->
+      <div class="mt-12 pt-8 border-t border-ink-200">
+        <h2 class="text-2xl font-light tracking-tight mb-2">Link a past order</h2>
+        <p class="text-sm text-ink-500 mb-6 max-w-lg">
+          Ordered as a guest? Add it to your account with the order number and the email you used at
+          checkout. (Orders placed with this account's email are linked automatically.)
+        </p>
+
+        @if (claimMsg()) {
+          <div
+            class="mb-4 px-4 py-3 text-sm rounded"
+            [class.bg-ink]="claimOk()"
+            [class.text-paper]="claimOk()"
+            [class.bg-ink-100]="!claimOk()"
+            [class.text-ink]="!claimOk()"
+          >
+            {{ claimMsg() }}
+            @if (claimOk()) {
+              <a routerLink="/orders" class="link-underline ml-1">View in my orders →</a>
+            }
+          </div>
+        }
+
+        <div class="flex flex-col sm:flex-row gap-3 max-w-xl">
+          <input
+            type="text"
+            [value]="claimOrderNumber()"
+            (input)="claimOrderNumber.set($any($event.target).value)"
+            placeholder="Order number (SZ-…)"
+            class="input-clean tabular flex-1"
+          />
+          <input
+            type="email"
+            [value]="claimEmail()"
+            (input)="claimEmail.set($any($event.target).value)"
+            placeholder="Email used at checkout"
+            class="input-clean flex-1"
+          />
+          <button
+            (click)="claim()"
+            [disabled]="!claimOrderNumber().trim() || !claimEmail().trim() || claiming()"
+            class="btn-primary shrink-0"
+          >
+            {{ claiming() ? 'Linking…' : 'Link order' }}
+          </button>
+        </div>
+      </div>
+
       <div class="mt-12 pt-8 border-t border-ink-200 flex justify-end">
         <button
           (click)="auth.logout()"
@@ -45,6 +94,37 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class AccountComponent {
   readonly auth = inject(AuthService);
+  private readonly ordersService = inject(OrdersService);
+
+  readonly claimOrderNumber = signal('');
+  readonly claimEmail = signal('');
+  readonly claiming = signal(false);
+  readonly claimMsg = signal('');
+  readonly claimOk = signal(false);
+
+  claim(): void {
+    const num = this.claimOrderNumber().trim();
+    const mail = this.claimEmail().trim();
+    if (!num || !mail) return;
+    this.claiming.set(true);
+    this.claimMsg.set('');
+    this.ordersService.claimOrder(num, mail).subscribe({
+      next: () => {
+        this.claiming.set(false);
+        this.claimOk.set(true);
+        this.claimMsg.set(`Order ${num} linked to your account.`);
+        this.claimOrderNumber.set('');
+        this.claimEmail.set('');
+      },
+      error: (err) => {
+        this.claiming.set(false);
+        this.claimOk.set(false);
+        this.claimMsg.set(
+          err?.error?.error ?? 'Could not link that order. Check the number and email.',
+        );
+      },
+    });
+  }
 
   firstName(): string {
     return (this.auth.currentUser()?.name ?? '').split(' ')[0];

@@ -7,6 +7,7 @@ import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env.js';
 import { AppError } from '../../middleware/error.js';
+import { claimGuestOrdersByEmail } from '../orders/order-helpers.js';
 
 export const authRouter = Router();
 
@@ -46,6 +47,9 @@ authRouter.post('/register', async (req, res, next) => {
       .values({ name: body.name, email: body.email, passwordHash })
       .returning({ id: users.id, email: users.email, role: users.role, name: users.name });
 
+    // Attach any guest orders placed earlier with this email
+    await claimGuestOrdersByEmail(user.id, user.email);
+
     const { accessToken, refreshToken } = signTokens(user.id, user.role, user.email);
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -67,6 +71,9 @@ authRouter.post('/login', async (req, res, next) => {
 
     const valid = await argon2.verify(user.passwordHash, body.password);
     if (!valid) throw new AppError(401, 'Invalid credentials');
+
+    // Attach any guest orders placed with this account's email (safe: password verified)
+    await claimGuestOrdersByEmail(user.id, user.email);
 
     const { accessToken, refreshToken } = signTokens(user.id, user.role, user.email);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);

@@ -67,6 +67,11 @@ export class OrdersService {
     });
   }
 
+  /** Link a past guest order to the signed-in account (order number + email as proof). */
+  claimOrder(orderNumber: string, email: string): Observable<{ data: Order }> {
+    return this.http.post<{ data: Order }>(`${this.api}/orders/claim`, { orderNumber, email });
+  }
+
   cancelOrder(id: string): Observable<{ data: Order }> {
     return this.http.post<{ data: Order }>(`${this.api}/orders/${id}/cancel`, {});
   }

@@ -75,6 +75,47 @@ ordersRouter.get('/track', async (req, res, next) => {
 
 ordersRouter.use(authenticate);
 
+// POST /api/v1/orders/claim — link a past guest order to the current account.
+// Proof of ownership = order number + the email it was placed under (works even
+// when that email differs from the account email).
+const claimSchema = z.object({
+  orderNumber: z.string().trim().min(1),
+  email: z.string().email(),
+});
+
+ordersRouter.post('/claim', async (req, res, next) => {
+  try {
+    const body = claimSchema.safeParse(req.body);
+    if (!body.success) throw new AppError(400, 'Order number and a valid email are required');
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.orderNumber, body.data.orderNumber),
+          isNull(orders.userId),
+          sql`lower(${orders.contactEmail}) = lower(${body.data.email})`,
+        ),
+      )
+      .limit(1);
+
+    if (!order) {
+      throw new AppError(404, 'No matching guest order found for that order number and email');
+    }
+
+    const [updated] = await db
+      .update(orders)
+      .set({ userId: req.user!.sub, updatedAt: new Date() })
+      .where(eq(orders.id, order.id))
+      .returning();
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/v1/orders — list user's orders
 ordersRouter.get('/', async (req, res, next) => {
   try {
