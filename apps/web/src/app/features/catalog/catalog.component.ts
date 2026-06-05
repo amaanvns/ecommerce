@@ -26,8 +26,42 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
 
     <div class="container-edge pb-24">
       <div class="flex flex-col lg:flex-row gap-12 lg:gap-16">
-        <!-- Sidebar filters -->
-        <aside class="lg:w-56 shrink-0">
+        <!-- Mobile filter backdrop -->
+        @if (filtersOpen()) {
+          <div
+            class="lg:hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm animate-fade-in"
+            (click)="filtersOpen.set(false)"
+            aria-hidden="true"
+          ></div>
+        }
+
+        <!-- Filters — sidebar on desktop, slide-in drawer on mobile -->
+        <aside
+          class="fixed lg:static inset-y-0 left-0 z-50 lg:z-auto w-80 max-w-[85vw] lg:w-56 shrink-0 bg-paper lg:bg-transparent overflow-y-auto lg:overflow-visible transition-transform duration-300 lg:translate-x-0 px-6 py-6 lg:p-0"
+          [class.translate-x-0]="filtersOpen()"
+          [class.-translate-x-full]="!filtersOpen()"
+        >
+          <div class="flex items-center justify-between mb-8 lg:hidden">
+            <p class="label">Filters</p>
+            <button
+              type="button"
+              (click)="filtersOpen.set(false)"
+              class="text-ink-500 hover:text-ink transition-colors"
+              aria-label="Close filters"
+            >
+              <svg
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
           <div class="lg:sticky lg:top-28 space-y-10">
             <div>
               <p class="label mb-4">Search</p>
@@ -99,15 +133,35 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
                 Clear filters
               </button>
             }
+
+            <button
+              type="button"
+              (click)="filtersOpen.set(false)"
+              class="lg:hidden btn-primary w-full"
+            >
+              View results
+            </button>
           </div>
         </aside>
 
         <!-- Main content -->
         <div class="flex-1 min-w-0">
           <!-- Sort bar -->
-          <div class="flex items-center justify-between mb-12 pb-5 border-b border-ink-200">
-            <p class="text-sm text-ink-500 tabular">{{ products().length }} shown</p>
-            <div class="flex items-center gap-3">
+          <div class="flex items-center justify-between gap-3 mb-12 pb-5 border-b border-ink-200">
+            <button
+              type="button"
+              (click)="filtersOpen.set(true)"
+              class="lg:hidden inline-flex items-center gap-2 text-sm border border-ink-300 rounded-full px-4 py-1.5 hover:border-ink transition-colors"
+            >
+              Filters
+              @if (hasActiveFilters()) {
+                <span class="w-1.5 h-1.5 rounded-full bg-ink"></span>
+              }
+            </button>
+            <p class="hidden lg:block text-sm text-ink-500 tabular">
+              {{ products().length }} shown
+            </p>
+            <div class="flex items-center gap-3 ml-auto">
               <span class="text-sm text-ink-500">Sort by</span>
               <select
                 [(ngModel)]="sortValue"
@@ -198,6 +252,7 @@ export class CatalogComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly seo = inject(SeoService);
 
+  readonly filtersOpen = signal(false);
   readonly categories = signal<Category[]>([]);
   readonly products = signal<ProductSummary[]>([]);
   readonly meta = signal<{ total: number; page: number; limit: number; totalPages: number } | null>(
@@ -307,6 +362,7 @@ export class CatalogComponent implements OnInit {
   }
 
   setCategory(slug: string | null): void {
+    this.filtersOpen.set(false);
     this.pushQueryParams({ category: slug, page: null });
   }
 
