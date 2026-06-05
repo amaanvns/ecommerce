@@ -225,12 +225,14 @@ const PRODUCTS = [
 ];
 
 // Build variant rows: one per colour × size combination.
-function buildVariants(p: (typeof PRODUCTS)[number]) {
+// `index` is the product's position in PRODUCTS — it's baked into the SKU so
+// two products that share the same opening letters can't collide.
+function buildVariants(p: (typeof PRODUCTS)[number], index: number) {
   const sizeKey = (p as { sizeLabel?: string }).sizeLabel ?? 'Size';
-  const skuBase = p.slug
+  const skuBase = `${p.slug
     .replace(/[^a-z0-9]/gi, '')
-    .slice(0, 6)
-    .toUpperCase();
+    .slice(0, 4)
+    .toUpperCase()}${index + 1}`;
   const rows: {
     sku: string;
     attributes: Record<string, string>;
@@ -307,7 +309,7 @@ async function seed() {
   // so safe to replace). Variants are only created when missing — never deleted
   // — so existing test orders that reference them stay intact.
   let productCount = 0;
-  for (const p of PRODUCTS) {
+  for (const [pi, p] of PRODUCTS.entries()) {
     const categoryId = catMap.get(p.category);
     if (!categoryId) {
       console.warn(`  ⚠ Category "${p.category}" not found, skipping ${p.slug}`);
@@ -363,7 +365,7 @@ async function seed() {
       .where(eq(schema.productVariants.productId, productId));
     if (variants.length === 0) {
       await db.insert(schema.productVariants).values(
-        buildVariants(p).map((v) => ({
+        buildVariants(p, pi).map((v) => ({
           productId,
           sku: v.sku,
           attributes: v.attributes,
