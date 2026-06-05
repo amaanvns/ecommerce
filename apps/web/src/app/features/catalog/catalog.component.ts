@@ -254,8 +254,8 @@ export class CatalogComponent implements OnInit {
         ? `${cat.charAt(0).toUpperCase() + cat.slice(1)}`
         : 'Shop all';
     const description = q
-      ? `Search results for "${q}" in the Shopzone collection.`
-      : 'Browse the full Shopzone collection — considered objects, made well.';
+      ? `Search results for "${q}" in the Star Enterprises collection.`
+      : 'Browse the full Star Enterprises collection — considered objects, made well.';
     // Don't index search-result and paginated pages (avoid duplicate-content penalties)
     const noindex = !!q || this.currentPage() > 1;
     this.seo.apply({

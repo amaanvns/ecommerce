@@ -390,7 +390,7 @@ export class CheckoutComponent implements OnInit {
             key: keyId,
             amount,
             currency,
-            name: 'ShopZone',
+            name: 'Star Enterprises',
             description: 'Order Payment',
             order_id: razorpayOrderId,
             prefill: { name: user?.name, email: user?.email },

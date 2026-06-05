@@ -64,9 +64,9 @@ import { CartService } from '../../../core/services/cart.service';
           <!-- Centered wordmark -->
           <a
             routerLink="/"
-            class="justify-self-center font-medium text-sm sm:text-base tracking-[0.2em] sm:tracking-[0.32em] uppercase text-ink whitespace-nowrap"
+            class="justify-self-center font-medium text-[11px] sm:text-sm md:text-base tracking-[0.1em] sm:tracking-[0.18em] md:tracking-[0.25em] uppercase text-ink whitespace-nowrap"
           >
-            Shopzone
+            Star Enterprises
           </a>
 
           <!-- Right actions -->

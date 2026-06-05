@@ -13,10 +13,10 @@ export interface SeoOptions {
   noindex?: boolean;
 }
 
-const DEFAULT_TITLE = 'Shopzone — Considered objects, made well';
+const DEFAULT_TITLE = 'Star Enterprises — Considered objects, made well';
 const DEFAULT_DESCRIPTION =
   'A small, slow edit of pieces designed to be lived with, mended, and passed on.';
-const DEFAULT_SITE_NAME = 'Shopzone';
+const DEFAULT_SITE_NAME = 'Star Enterprises';
 
 @Injectable({ providedIn: 'root' })
 export class SeoService {
@@ -27,7 +27,7 @@ export class SeoService {
   constructor(@Inject(DOCUMENT) private doc: Document) {}
 
   apply(opts: SeoOptions): void {
-    const title = opts.title ? `${opts.title} — Shopzone` : DEFAULT_TITLE;
+    const title = opts.title ? `${opts.title} — Star Enterprises` : DEFAULT_TITLE;
     const description = opts.description ?? DEFAULT_DESCRIPTION;
     const siteName = opts.siteName ?? DEFAULT_SITE_NAME;
     const type = opts.type ?? 'website';

@@ -13,7 +13,9 @@ import { RouterOutlet, RouterLink } from '@angular/router';
       >
         <div class="absolute inset-0 bg-ink/20"></div>
         <div class="relative h-full flex flex-col justify-between p-12 text-paper">
-          <a routerLink="/" class="text-base tracking-[0.32em] uppercase font-medium">Shopzone</a>
+          <a routerLink="/" class="text-base tracking-[0.22em] uppercase font-medium"
+            >Star Enterprises</a
+          >
           <div class="max-w-md">
             <h2 class="text-4xl xl:text-5xl font-light leading-[1.1] tracking-tight text-balance">
               Considered objects, made to outlive trends.
@@ -28,8 +30,10 @@ import { RouterOutlet, RouterLink } from '@angular/router';
       <!-- Form side -->
       <div class="flex flex-col">
         <div class="flex justify-between items-center px-8 lg:px-12 py-6">
-          <a routerLink="/" class="lg:hidden text-base tracking-[0.32em] uppercase font-medium"
-            >Shopzone</a
+          <a
+            routerLink="/"
+            class="lg:hidden text-xs sm:text-sm tracking-[0.12em] uppercase font-medium"
+            >Star Enterprises</a
           >
           <a
             routerLink="/"
@@ -43,7 +47,7 @@ import { RouterOutlet, RouterLink } from '@angular/router';
             <router-outlet />
           </div>
         </div>
-        <p class="text-center text-sm text-ink-400 px-8 py-6">&copy; {{ year }} Shopzone</p>
+        <p class="text-center text-sm text-ink-400 px-8 py-6">&copy; {{ year }} Star Enterprises</p>
       </div>
     </div>
   `,

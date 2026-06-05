@@ -12,13 +12,13 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
-        title: 'ShopZone — Home',
+        title: 'Star Enterprises — Home',
       },
       {
         path: 'products',
         loadComponent: () =>
           import('./features/catalog/catalog.component').then((m) => m.CatalogComponent),
-        title: 'Products — ShopZone',
+        title: 'Products — Star Enterprises',
       },
       {
         path: 'products/:slug',
@@ -26,35 +26,35 @@ export const routes: Routes = [
           import('./features/product/product-detail.component').then(
             (m) => m.ProductDetailComponent,
           ),
-        title: 'ShopZone',
+        title: 'Star Enterprises',
       },
       {
         path: 'checkout',
         loadComponent: () =>
           import('./features/checkout/checkout.component').then((m) => m.CheckoutComponent),
         canActivate: [authGuard],
-        title: 'Checkout — ShopZone',
+        title: 'Checkout — Star Enterprises',
       },
       {
         path: 'orders',
         loadComponent: () =>
           import('./features/orders/orders.component').then((m) => m.OrdersComponent),
         canActivate: [authGuard],
-        title: 'My Orders — ShopZone',
+        title: 'My Orders — Star Enterprises',
       },
       {
         path: 'orders/:id',
         loadComponent: () =>
           import('./features/orders/order-detail.component').then((m) => m.OrderDetailComponent),
         canActivate: [authGuard],
-        title: 'Order Details — ShopZone',
+        title: 'Order Details — Star Enterprises',
       },
       {
         path: 'wishlist',
         loadComponent: () =>
           import('./features/wishlist/wishlist.component').then((m) => m.WishlistComponent),
         canActivate: [authGuard],
-        title: 'My Wishlist — ShopZone',
+        title: 'My Wishlist — Star Enterprises',
       },
       {
         path: 'account',
@@ -148,13 +148,13 @@ export const routes: Routes = [
         path: 'login',
         loadComponent: () =>
           import('./features/auth/login/login.component').then((m) => m.LoginComponent),
-        title: 'Sign In — ShopZone',
+        title: 'Sign In — Star Enterprises',
       },
       {
         path: 'register',
         loadComponent: () =>
           import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
-        title: 'Create Account — ShopZone',
+        title: 'Create Account — Star Enterprises',
       },
       { path: '', redirectTo: 'login', pathMatch: 'full' },
     ],

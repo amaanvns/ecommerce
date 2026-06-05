@@ -83,7 +83,7 @@ import { CartService } from '../../core/services/cart.service';
           <div
             class="flex flex-col md:flex-row gap-4 items-center justify-between pt-8 border-t border-ink-200 text-2xs uppercase tracking-widest text-ink-400"
           >
-            <p class="font-medium tracking-[0.32em] text-ink normal-case">SHOPZONE</p>
+            <p class="font-medium tracking-[0.2em] text-ink normal-case">STAR ENTERPRISES</p>
             <p>&copy; {{ year }} · All rights reserved</p>
             <div class="flex gap-6">
               <a class="hover:text-ink transition-colors">Privacy</a>

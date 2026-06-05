@@ -225,8 +225,8 @@ export class HomeComponent implements OnInit {
       type: 'website',
     });
     this.seo.setJsonLd([
-      { '@type': 'WebSite', name: 'Shopzone', url: '/' },
-      { '@type': 'Organization', name: 'Shopzone', url: '/' },
+      { '@type': 'WebSite', name: 'Star Enterprises', url: '/' },
+      { '@type': 'Organization', name: 'Star Enterprises', url: '/' },
     ]);
 
     this.catalog.getCategories().subscribe((res) => this.categories.set(res.data));
