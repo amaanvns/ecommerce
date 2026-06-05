@@ -1,372 +1,303 @@
 import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
+import { notInArray } from 'drizzle-orm';
 import * as schema from '../schema/index.js';
 
 const sql = neon(process.env['DATABASE_URL']!);
 const db = drizzle(sql, { schema });
 
+// Editorial scene photos (proven to load) used for the department tiles.
+const SCENE = {
+  rack: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80',
+  store: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80',
+  folded: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&q=80',
+  fashionA: 'https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=1200&q=80',
+  fashionB: 'https://images.unsplash.com/photo-1551803091-e20673f15770?w=1200&q=80',
+  fashionC: 'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1200&q=80',
+};
+
+// Keyword-based product photos so each item shows a relevant picture.
+// `lock` keeps the same image for the same product on every load.
+const lf = (keywords: string, lock: number) =>
+  `https://loremflickr.com/800/1000/${keywords}?lock=${lock}`;
+
 const CATEGORIES = [
-  { name: 'Electronics', slug: 'electronics', description: 'Gadgets and devices', sortOrder: 0 },
-  { name: 'Clothing', slug: 'clothing', description: 'Fashion for everyone', sortOrder: 1 },
   {
-    name: 'Home & Garden',
-    slug: 'home-garden',
-    description: 'For your living space',
+    name: 'Shirts',
+    slug: 'shirts',
+    description: 'Considered everyday shirting',
+    imageUrl: SCENE.folded,
+    sortOrder: 0,
+  },
+  {
+    name: 'Trousers',
+    slug: 'trousers',
+    description: 'Tailored and relaxed fits',
+    imageUrl: SCENE.fashionB,
+    sortOrder: 1,
+  },
+  {
+    name: 'Outerwear',
+    slug: 'outerwear',
+    description: 'Coats and jackets for every season',
+    imageUrl: SCENE.rack,
     sortOrder: 2,
   },
-  { name: 'Sports', slug: 'sports', description: 'Gear and equipment', sortOrder: 3 },
-  { name: 'Books', slug: 'books', description: 'Expand your mind', sortOrder: 4 },
+  {
+    name: 'Knitwear',
+    slug: 'knitwear',
+    description: 'Natural-fibre knits, made to last',
+    imageUrl: SCENE.fashionC,
+    sortOrder: 3,
+  },
+  {
+    name: 'Accessories',
+    slug: 'accessories',
+    description: 'Bags, caps and finishing pieces',
+    imageUrl: SCENE.fashionA,
+    sortOrder: 4,
+  },
+  {
+    name: 'Home',
+    slug: 'home',
+    description: 'A small edit of objects for the home',
+    imageUrl: SCENE.store,
+    sortOrder: 5,
+  },
 ];
+
+const SIZES = ['S', 'M', 'L'];
+const WAISTS = ['30', '32', '34'];
 
 const PRODUCTS = [
-  // Electronics
+  // ── Shirts ─────────────────────────────────────────────────────────────────
   {
-    category: 'electronics',
-    name: 'Wireless Noise-Cancelling Headphones',
-    slug: 'wireless-nc-headphones',
-    brand: 'SoundPro',
+    category: 'shirts',
+    name: 'The Oxford Shirt',
+    slug: 'the-oxford-shirt',
+    brand: 'Atelier Nord',
     description:
-      'Premium over-ear headphones with active noise cancellation, 30-hour battery, and crystal-clear audio.',
-    images: [
-      'https://picsum.photos/seed/headphones1/800/800',
-      'https://picsum.photos/seed/headphones2/800/800',
-    ],
-    variants: [
-      {
-        sku: 'SNP-HP-BLK',
-        attributes: { Color: 'Black' },
-        price: '149.99',
-        compareAtPrice: '199.99',
-        stock: 42,
-      },
-      {
-        sku: 'SNP-HP-WHT',
-        attributes: { Color: 'White' },
-        price: '149.99',
-        compareAtPrice: '199.99',
-        stock: 18,
-      },
-    ],
+      'A button-down in heavyweight organic Oxford cotton. Cut for an easy, regular fit with a soft collar that wears in beautifully.',
+    images: [lf('white,shirt', 11), lf('folded,shirt', 12)],
+    sizes: SIZES,
+    colors: ['White', 'Sky Blue'],
+    price: '2400.00',
+    compareAtPrice: '2900.00',
   },
   {
-    category: 'electronics',
-    name: 'Smart Watch Series X',
-    slug: 'smart-watch-series-x',
-    brand: 'TechWear',
+    category: 'shirts',
+    name: 'Linen Camp Shirt',
+    slug: 'linen-camp-shirt',
+    brand: 'Maison Indigo',
     description:
-      'Track fitness, receive notifications, and monitor your health with this sleek smartwatch featuring GPS and a 7-day battery life.',
-    images: [
-      'https://picsum.photos/seed/watch1/800/800',
-      'https://picsum.photos/seed/watch2/800/800',
-    ],
-    variants: [
-      {
-        sku: 'TW-SWX-40',
-        attributes: { Size: '40mm', Color: 'Midnight' },
-        price: '249.00',
-        compareAtPrice: '299.00',
-        stock: 30,
-      },
-      {
-        sku: 'TW-SWX-44',
-        attributes: { Size: '44mm', Color: 'Midnight' },
-        price: '279.00',
-        compareAtPrice: '329.00',
-        stock: 25,
-      },
-      {
-        sku: 'TW-SWX-40S',
-        attributes: { Size: '40mm', Color: 'Silver' },
-        price: '249.00',
-        compareAtPrice: '299.00',
-        stock: 12,
-      },
-    ],
+      'A relaxed open-collar shirt in pure European linen. Breathable, lightly textured, and made for warm days.',
+    images: [lf('linen,shirt', 13)],
+    sizes: SIZES,
+    colors: ['Sand', 'Olive'],
+    price: '2650.00',
+    compareAtPrice: null,
   },
+  // ── Trousers ───────────────────────────────────────────────────────────────
   {
-    category: 'electronics',
-    name: '4K Ultra HD Monitor 27"',
-    slug: '4k-monitor-27',
-    brand: 'ViewTech',
+    category: 'trousers',
+    name: 'Pleated Wool Trouser',
+    slug: 'pleated-wool-trouser',
+    brand: 'Atelier Nord',
     description:
-      '27-inch IPS display with 4K resolution, HDR support, USB-C, and 144Hz refresh rate — perfect for work and gaming.',
-    images: [
-      'https://picsum.photos/seed/monitor1/800/800',
-      'https://picsum.photos/seed/monitor2/800/800',
-    ],
-    variants: [
-      { sku: 'VT-MON-27', attributes: {}, price: '399.00', compareAtPrice: '499.00', stock: 15 },
-    ],
+      'A single-pleat trouser in a mid-weight wool blend with a clean, tapered leg. Smart enough for the office, soft enough for the weekend.',
+    images: [lf('wool,trousers', 14)],
+    sizes: WAISTS,
+    colors: ['Charcoal', 'Stone'],
+    price: '3800.00',
+    compareAtPrice: null,
+    sizeLabel: 'Waist',
   },
   {
-    category: 'electronics',
-    name: 'Portable Bluetooth Speaker',
-    slug: 'portable-bluetooth-speaker',
-    brand: 'SoundPro',
+    category: 'trousers',
+    name: 'Organic Cotton Chino',
+    slug: 'organic-cotton-chino',
+    brand: 'Field & Co.',
     description:
-      'Waterproof IPX7 speaker with 360° sound, 20-hour playback, and built-in power bank.',
-    images: ['https://picsum.photos/seed/speaker1/800/800'],
-    variants: [
-      {
-        sku: 'SNP-SPK-BLU',
-        attributes: { Color: 'Ocean Blue' },
-        price: '79.99',
-        compareAtPrice: null,
-        stock: 60,
-      },
-      {
-        sku: 'SNP-SPK-GRN',
-        attributes: { Color: 'Forest Green' },
-        price: '79.99',
-        compareAtPrice: null,
-        stock: 45,
-      },
-    ],
+      'A garment-dyed chino in stretch organic cotton. Wrinkle-resistant with a slim-straight cut.',
+    images: [lf('chino,trousers', 15)],
+    sizes: WAISTS,
+    colors: ['Khaki', 'Navy'],
+    price: '2200.00',
+    compareAtPrice: '2800.00',
+    sizeLabel: 'Waist',
   },
-  // Clothing
+  // ── Outerwear ──────────────────────────────────────────────────────────────
   {
-    category: 'clothing',
-    name: 'Classic Cotton T-Shirt',
-    slug: 'classic-cotton-tshirt',
-    brand: 'BasicWear',
-    description: '100% organic cotton tee. Relaxed fit, pre-shrunk, available in 12 colours.',
-    images: ['https://picsum.photos/seed/tshirt1/800/800'],
-    variants: [
-      {
-        sku: 'BW-TS-WHT-S',
-        attributes: { Color: 'White', Size: 'S' },
-        price: '24.99',
-        compareAtPrice: null,
-        stock: 100,
-      },
-      {
-        sku: 'BW-TS-WHT-M',
-        attributes: { Color: 'White', Size: 'M' },
-        price: '24.99',
-        compareAtPrice: null,
-        stock: 100,
-      },
-      {
-        sku: 'BW-TS-WHT-L',
-        attributes: { Color: 'White', Size: 'L' },
-        price: '24.99',
-        compareAtPrice: null,
-        stock: 80,
-      },
-      {
-        sku: 'BW-TS-BLK-S',
-        attributes: { Color: 'Black', Size: 'S' },
-        price: '24.99',
-        compareAtPrice: null,
-        stock: 90,
-      },
-      {
-        sku: 'BW-TS-BLK-M',
-        attributes: { Color: 'Black', Size: 'M' },
-        price: '24.99',
-        compareAtPrice: null,
-        stock: 110,
-      },
-      {
-        sku: 'BW-TS-BLK-L',
-        attributes: { Color: 'Black', Size: 'L' },
-        price: '24.99',
-        compareAtPrice: null,
-        stock: 75,
-      },
-    ],
-  },
-  {
-    category: 'clothing',
-    name: 'Slim Fit Chino Pants',
-    slug: 'slim-fit-chino-pants',
-    brand: 'UrbanEdge',
-    description: 'Modern slim-fit chinos crafted from stretch-cotton blend. Wrinkle-resistant.',
-    images: ['https://picsum.photos/seed/chino1/800/800'],
-    variants: [
-      {
-        sku: 'UE-CH-KHK-30',
-        attributes: { Color: 'Khaki', Waist: '30' },
-        price: '59.99',
-        compareAtPrice: '74.99',
-        stock: 40,
-      },
-      {
-        sku: 'UE-CH-KHK-32',
-        attributes: { Color: 'Khaki', Waist: '32' },
-        price: '59.99',
-        compareAtPrice: '74.99',
-        stock: 35,
-      },
-      {
-        sku: 'UE-CH-NVY-30',
-        attributes: { Color: 'Navy', Waist: '30' },
-        price: '59.99',
-        compareAtPrice: '74.99',
-        stock: 28,
-      },
-    ],
-  },
-  // Home & Garden
-  {
-    category: 'home-garden',
-    name: 'Ergonomic Office Chair',
-    slug: 'ergonomic-office-chair',
-    brand: 'ComfortSeat',
+    category: 'outerwear',
+    name: 'The Linen Overcoat',
+    slug: 'the-linen-overcoat',
+    brand: 'Maison Indigo',
     description:
-      'Fully adjustable lumbar support, breathable mesh back, 4D armrests. Built for long work sessions.',
-    images: [
-      'https://picsum.photos/seed/chair1/800/800',
-      'https://picsum.photos/seed/chair2/800/800',
-    ],
-    variants: [
-      {
-        sku: 'CS-CHAIR-BLK',
-        attributes: { Color: 'Black' },
-        price: '349.00',
-        compareAtPrice: '449.00',
-        stock: 20,
-      },
-      {
-        sku: 'CS-CHAIR-GRY',
-        attributes: { Color: 'Grey' },
-        price: '349.00',
-        compareAtPrice: '449.00',
-        stock: 10,
-      },
-    ],
+      'An unstructured overcoat in a heavy linen-wool blend. Fully lined, with patch pockets and a single-breasted front.',
+    images: [lf('wool,coat', 16), lf('overcoat', 17)],
+    sizes: SIZES,
+    colors: ['Bone', 'Camel'],
+    price: '8900.00',
+    compareAtPrice: '11000.00',
   },
   {
-    category: 'home-garden',
-    name: 'Ceramic Plant Pot Set',
-    slug: 'ceramic-plant-pot-set',
-    brand: 'GreenHome',
-    description: 'Set of 3 handcrafted ceramic pots with drainage holes and matching saucers.',
-    images: ['https://picsum.photos/seed/pots1/800/800'],
-    variants: [
-      {
-        sku: 'GH-POT-TER',
-        attributes: { Color: 'Terracotta' },
-        price: '34.99',
-        compareAtPrice: null,
-        stock: 55,
-      },
-      {
-        sku: 'GH-POT-WHT',
-        attributes: { Color: 'White' },
-        price: '34.99',
-        compareAtPrice: null,
-        stock: 48,
-      },
-    ],
-  },
-  // Sports
-  {
-    category: 'sports',
-    name: 'Yoga Mat Premium',
-    slug: 'yoga-mat-premium',
-    brand: 'FlexFit',
+    category: 'outerwear',
+    name: 'Quilted Field Jacket',
+    slug: 'quilted-field-jacket',
+    brand: 'Field & Co.',
     description:
-      '6mm thick non-slip TPE yoga mat with carrying strap. Eco-friendly and sweat-resistant.',
-    images: ['https://picsum.photos/seed/yoga1/800/800'],
-    variants: [
-      {
-        sku: 'FF-YM-PUR',
-        attributes: { Color: 'Purple' },
-        price: '44.99',
-        compareAtPrice: '59.99',
-        stock: 70,
-      },
-      {
-        sku: 'FF-YM-BLU',
-        attributes: { Color: 'Blue' },
-        price: '44.99',
-        compareAtPrice: '59.99',
-        stock: 65,
-      },
-    ],
+      'A diamond-quilted jacket with a corduroy collar and snap front. Lightweight warmth for the in-between months.',
+    images: [lf('jacket', 18)],
+    sizes: SIZES,
+    colors: ['Forest', 'Black'],
+    price: '6500.00',
+    compareAtPrice: null,
   },
+  // ── Knitwear ───────────────────────────────────────────────────────────────
   {
-    category: 'sports',
-    name: 'Adjustable Dumbbell Set',
-    slug: 'adjustable-dumbbell-set',
-    brand: 'IronCore',
+    category: 'knitwear',
+    name: 'Merino Crew Knit',
+    slug: 'merino-crew-knit',
+    brand: 'The Knittery',
     description:
-      'Space-saving adjustable dumbbells ranging 5–52.5 lbs per hand with quick-change dial.',
-    images: ['https://picsum.photos/seed/dumbbell1/800/800'],
-    variants: [
-      { sku: 'IC-DB-SET', attributes: {}, price: '299.00', compareAtPrice: '349.00', stock: 22 },
-    ],
+      'A fine-gauge crew-neck in extra-fine merino wool. Soft, breathable, and easy to layer.',
+    images: [lf('sweater,knit', 19)],
+    sizes: SIZES,
+    colors: ['Oatmeal', 'Navy', 'Charcoal'],
+    price: '3400.00',
+    compareAtPrice: null,
   },
-  // Books
   {
-    category: 'books',
-    name: 'Clean Code',
-    slug: 'clean-code',
-    brand: 'Prentice Hall',
+    category: 'knitwear',
+    name: 'Lambswool Cardigan',
+    slug: 'lambswool-cardigan',
+    brand: 'The Knittery',
+    description: 'A relaxed cardigan in brushed lambswool with corozo buttons and ribbed cuffs.',
+    images: [lf('cardigan,wool', 20)],
+    sizes: SIZES,
+    colors: ['Moss', 'Ecru'],
+    price: '4200.00',
+    compareAtPrice: '4900.00',
+  },
+  // ── Accessories ────────────────────────────────────────────────────────────
+  {
+    category: 'accessories',
+    name: 'Leather Holdall',
+    slug: 'leather-holdall',
+    brand: 'Hide & Stitch',
     description:
-      'A handbook of agile software craftsmanship by Robert C. Martin. Essential reading for every developer.',
-    images: ['https://picsum.photos/seed/cleancode/800/800'],
-    variants: [
-      {
-        sku: 'BK-CC-PB',
-        attributes: { Format: 'Paperback' },
-        price: '39.99',
-        compareAtPrice: null,
-        stock: 200,
-      },
-      {
-        sku: 'BK-CC-EB',
-        attributes: { Format: 'eBook' },
-        price: '19.99',
-        compareAtPrice: null,
-        stock: 9999,
-      },
-    ],
+      'A weekend holdall in vegetable-tanned leather that patinas with use. Cotton-twill lining and a detachable strap.',
+    images: [lf('leather,bag', 21)],
+    sizes: ['One Size'],
+    colors: ['Tan', 'Dark Brown'],
+    price: '7800.00',
+    compareAtPrice: null,
   },
   {
-    category: 'books',
-    name: 'The Pragmatic Programmer',
-    slug: 'pragmatic-programmer',
-    brand: 'Addison-Wesley',
-    description: '20th Anniversary Edition. Timeless lessons on software engineering excellence.',
-    images: ['https://picsum.photos/seed/pragprog/800/800'],
-    variants: [
-      {
-        sku: 'BK-PP-PB',
-        attributes: { Format: 'Paperback' },
-        price: '44.99',
-        compareAtPrice: null,
-        stock: 150,
-      },
-      {
-        sku: 'BK-PP-EB',
-        attributes: { Format: 'eBook' },
-        price: '24.99',
-        compareAtPrice: null,
-        stock: 9999,
-      },
-    ],
+    category: 'accessories',
+    name: 'Wool Baker Cap',
+    slug: 'wool-baker-cap',
+    brand: 'Hide & Stitch',
+    description: 'A classic baker-boy cap in a herringbone wool tweed with a quilted lining.',
+    images: [lf('flat,cap', 22)],
+    sizes: ['One Size'],
+    colors: ['Grey', 'Brown'],
+    price: '1300.00',
+    compareAtPrice: null,
+  },
+  // ── Home (the few non-clothing pieces) ──────────────────────────────────────
+  {
+    category: 'home',
+    name: 'Soy Wax Candle',
+    slug: 'soy-wax-candle',
+    brand: 'Ember & Co.',
+    description:
+      'A hand-poured soy candle with notes of cedar, vetiver and a trace of smoke. 50-hour burn time.',
+    images: [lf('candle', 23)],
+    sizes: ['One Size'],
+    colors: ['Cedar & Smoke'],
+    price: '950.00',
+    compareAtPrice: null,
+  },
+  {
+    category: 'home',
+    name: 'Linen Throw Blanket',
+    slug: 'linen-throw-blanket',
+    brand: 'Ember & Co.',
+    description:
+      'A stonewashed linen throw with hand-knotted fringe. Light enough for summer, layered for winter.',
+    images: [lf('blanket,linen', 24)],
+    sizes: ['One Size'],
+    colors: ['Flax', 'Slate'],
+    price: '3600.00',
+    compareAtPrice: '4200.00',
   },
 ];
 
-async function seed() {
-  console.log('🌱 Seeding database...');
+// Build the variant rows for a product: one per colour × size combination.
+function buildVariants(p: (typeof PRODUCTS)[number]) {
+  const sizeKey = (p as { sizeLabel?: string }).sizeLabel ?? 'Size';
+  const skuBase = p.slug
+    .replace(/[^a-z0-9]/gi, '')
+    .slice(0, 6)
+    .toUpperCase();
+  const rows: {
+    sku: string;
+    attributes: Record<string, string>;
+    price: string;
+    compareAtPrice: string | null;
+    stock: number;
+  }[] = [];
 
-  // Insert categories
+  let n = 1;
+  for (const color of p.colors) {
+    for (const size of p.sizes) {
+      const attributes: Record<string, string> = { Color: color };
+      if (size !== 'One Size') attributes[sizeKey] = size;
+      rows.push({
+        sku: `${skuBase}-${String(n).padStart(3, '0')}`,
+        attributes,
+        price: p.price,
+        compareAtPrice: p.compareAtPrice,
+        stock: 20 + ((n * 7) % 60),
+      });
+      n++;
+    }
+  }
+  return rows;
+}
+
+async function seed() {
+  console.log('🌱 Seeding database (clothing catalogue)...');
+
+  // ── Reset: hide any previously-seeded demo products that aren't part of this
+  // clothing catalogue, and clear the old categories. Soft-delete (not row
+  // delete) keeps things FK-safe for any orders/reviews that reference them.
+  // Scoped by slug so re-running this seed doesn't hide the clothing products.
+  console.log('  → resetting old demo data');
+  const keepSlugs = PRODUCTS.map((p) => p.slug);
+  await db
+    .update(schema.products)
+    .set({ isPublished: false, deletedAt: new Date(), categoryId: null })
+    .where(notInArray(schema.products.slug, keepSlugs));
+  await db.delete(schema.categories).where(
+    notInArray(
+      schema.categories.slug,
+      CATEGORIES.map((c) => c.slug),
+    ),
+  );
+
+  // ── Categories
   console.log('  → categories');
   await db.insert(schema.categories).values(CATEGORIES).onConflictDoNothing();
-
-  // Build slug → id map (merge newly inserted + already existing)
   const allCats = await db
     .select({ id: schema.categories.id, slug: schema.categories.slug })
     .from(schema.categories);
   const catMap = new Map(allCats.map((c) => [c.slug, c.id]));
-
   console.log(`     ${catMap.size} categories ready`);
 
-  // Insert products + images + variants
+  // ── Products
   let productCount = 0;
   for (const p of PRODUCTS) {
     const categoryId = catMap.get(p.category);
@@ -400,7 +331,7 @@ async function seed() {
       .values(p.images.map((url, i) => ({ productId, url, alt: p.name, sortOrder: i })));
 
     await db.insert(schema.productVariants).values(
-      p.variants.map((v) => ({
+      buildVariants(p).map((v) => ({
         productId,
         sku: v.sku,
         attributes: v.attributes,
