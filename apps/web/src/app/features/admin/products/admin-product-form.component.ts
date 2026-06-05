@@ -61,7 +61,7 @@ function variantToForm(v: ProductVariant): VariantForm {
   imports: [FormsModule, RouterLink, CurrencyPipe],
   template: `
     <section class="border-b border-ink-200 bg-paper">
-      <div class="px-10 py-12">
+      <div class="px-4 sm:px-6 lg:px-10 py-12">
         <a
           routerLink="/admin/products"
           class="text-2xs uppercase tracking-widest link-underline mb-4 inline-block"
@@ -74,7 +74,7 @@ function variantToForm(v: ProductVariant): VariantForm {
       </div>
     </section>
 
-    <div class="px-10 py-10 max-w-4xl">
+    <div class="px-4 sm:px-6 lg:px-10 py-10 max-w-4xl">
       @if (pageLoading()) {
         <div class="space-y-4">
           <div class="h-12 bg-ink-50 animate-pulse"></div>

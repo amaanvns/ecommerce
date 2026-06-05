@@ -10,7 +10,9 @@ const ORDER_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'
   imports: [CurrencyPipe, DatePipe, TitleCasePipe, FormsModule],
   template: `
     <section class="border-b border-ink-200 bg-paper">
-      <div class="px-10 py-12 flex items-end justify-between gap-6">
+      <div
+        class="px-4 sm:px-6 lg:px-10 py-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6"
+      >
         <h1 class="text-4xl font-light tracking-tighter">Orders</h1>
         <div class="flex items-center gap-6">
           <select
@@ -30,7 +32,7 @@ const ORDER_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'
       </div>
     </section>
 
-    <div class="px-10 py-10">
+    <div class="px-4 sm:px-6 lg:px-10 py-10">
       @if (loading()) {
         <div class="space-y-px">
           @for (_ of [1, 2, 3, 4, 5]; track $index) {
@@ -40,65 +42,67 @@ const ORDER_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'
       }
 
       @if (!loading()) {
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-ink text-left">
-              <th class="pb-3 label">Order No.</th>
-              <th class="pb-3 label">Customer</th>
-              <th class="pb-3 label">Date</th>
-              <th class="pb-3 label">Payment</th>
-              <th class="pb-3 label text-right">Total</th>
-              <th class="pb-3 label">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (order of orders(); track order.id) {
-              <tr class="border-b border-ink-200 hover:bg-ink-50 transition-colors">
-                <td class="py-4 font-mono text-xs">{{ order.orderNumber }}</td>
-                <td class="py-4">
-                  <p class="text-base leading-tight truncate max-w-[180px]">
-                    {{ order.userName ?? '—' }}
-                  </p>
-                  <p
-                    class="text-2xs uppercase tracking-widest text-ink-400 truncate max-w-[180px] mt-0.5"
-                  >
-                    {{ order.userEmail ?? '' }}
-                  </p>
-                </td>
-                <td class="py-4 text-sm text-ink-500 whitespace-nowrap">
-                  {{ order.placedAt | date: 'dd MMM yyyy' }}
-                </td>
-                <td class="py-4">
-                  <span class="badge border" [class]="paymentClass(order.paymentStatus)">
-                    {{ order.paymentStatus | titlecase }}
-                  </span>
-                </td>
-                <td class="py-4 font-mono text-sm text-right whitespace-nowrap">
-                  {{ +order.total | currency: 'INR' : 'symbol' : '1.2-2' }}
-                </td>
-                <td class="py-4">
-                  <select
-                    [value]="order.status"
-                    (change)="updateStatus(order, $any($event.target).value)"
-                    [disabled]="updating() === order.id"
-                    class="text-2xs uppercase tracking-widest border border-ink-200 px-2 py-1.5 bg-transparent focus:ring-0 focus:border-ink focus:outline-none disabled:opacity-50 cursor-pointer"
-                  >
-                    @for (s of statuses; track s) {
-                      <option [value]="s">{{ s | titlecase }}</option>
-                    }
-                  </select>
-                </td>
+        <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <table class="w-full min-w-[680px]">
+            <thead>
+              <tr class="border-b border-ink text-left">
+                <th class="pb-3 label">Order No.</th>
+                <th class="pb-3 label">Customer</th>
+                <th class="pb-3 label">Date</th>
+                <th class="pb-3 label">Payment</th>
+                <th class="pb-3 label text-right">Total</th>
+                <th class="pb-3 label">Status</th>
               </tr>
-            }
-            @if (orders().length === 0) {
-              <tr>
-                <td colspan="6" class="py-16 text-center">
-                  <p class="text-3xl font-light">No orders.</p>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (order of orders(); track order.id) {
+                <tr class="border-b border-ink-200 hover:bg-ink-50 transition-colors">
+                  <td class="py-4 font-mono text-xs">{{ order.orderNumber }}</td>
+                  <td class="py-4">
+                    <p class="text-base leading-tight truncate max-w-[180px]">
+                      {{ order.userName ?? '—' }}
+                    </p>
+                    <p
+                      class="text-2xs uppercase tracking-widest text-ink-400 truncate max-w-[180px] mt-0.5"
+                    >
+                      {{ order.userEmail ?? '' }}
+                    </p>
+                  </td>
+                  <td class="py-4 text-sm text-ink-500 whitespace-nowrap">
+                    {{ order.placedAt | date: 'dd MMM yyyy' }}
+                  </td>
+                  <td class="py-4">
+                    <span class="badge border" [class]="paymentClass(order.paymentStatus)">
+                      {{ order.paymentStatus | titlecase }}
+                    </span>
+                  </td>
+                  <td class="py-4 font-mono text-sm text-right whitespace-nowrap">
+                    {{ +order.total | currency: 'INR' : 'symbol' : '1.2-2' }}
+                  </td>
+                  <td class="py-4">
+                    <select
+                      [value]="order.status"
+                      (change)="updateStatus(order, $any($event.target).value)"
+                      [disabled]="updating() === order.id"
+                      class="text-2xs uppercase tracking-widest border border-ink-200 px-2 py-1.5 bg-transparent focus:ring-0 focus:border-ink focus:outline-none disabled:opacity-50 cursor-pointer"
+                    >
+                      @for (s of statuses; track s) {
+                        <option [value]="s">{{ s | titlecase }}</option>
+                      }
+                    </select>
+                  </td>
+                </tr>
+              }
+              @if (orders().length === 0) {
+                <tr>
+                  <td colspan="6" class="py-16 text-center">
+                    <p class="text-3xl font-light">No orders.</p>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
 
         @if (meta(); as m) {
           @if (m.totalPages > 1) {

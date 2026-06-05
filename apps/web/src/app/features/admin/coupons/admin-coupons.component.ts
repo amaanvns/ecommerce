@@ -8,7 +8,9 @@ import { AdminCoupon, AdminService, PaginatedMeta } from '../../../core/services
   imports: [CurrencyPipe, DatePipe, TitleCasePipe, ReactiveFormsModule],
   template: `
     <section class="border-b border-ink-200 bg-paper">
-      <div class="px-10 py-12 flex items-end justify-between gap-6">
+      <div
+        class="px-4 sm:px-6 lg:px-10 py-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6"
+      >
         <div>
           <h1 class="text-4xl font-light tracking-tighter">Coupons</h1>
           @if (meta()) {
@@ -21,7 +23,7 @@ import { AdminCoupon, AdminService, PaginatedMeta } from '../../../core/services
       </div>
     </section>
 
-    <div class="px-10 py-10">
+    <div class="px-4 sm:px-6 lg:px-10 py-10">
       @if (loading()) {
         <div class="space-y-px">
           @for (_ of [1, 2, 3, 4, 5]; track $index) {
@@ -35,81 +37,83 @@ import { AdminCoupon, AdminService, PaginatedMeta } from '../../../core/services
       }
 
       @if (!loading() && coupons().length > 0) {
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-ink text-left text-sm">
-              <th class="pb-3 label">Code</th>
-              <th class="pb-3 label">Type</th>
-              <th class="pb-3 label text-right">Value</th>
-              <th class="pb-3 label text-right">Usage</th>
-              <th class="pb-3 label">Window</th>
-              <th class="pb-3 label">Status</th>
-              <th class="pb-3 label text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (c of coupons(); track c.id) {
-              <tr class="border-b border-ink-200 hover:bg-ink-50/60 transition-colors">
-                <td class="py-4">
-                  <p class="font-mono text-sm uppercase">{{ c.code }}</p>
-                  @if (c.firstOrderOnly) {
-                    <p class="text-2xs text-ink-400 mt-0.5">First order only</p>
-                  }
-                </td>
-                <td class="py-4 text-sm">{{ c.type | titlecase }}</td>
-                <td class="py-4 text-sm text-right tabular">
-                  @if (c.type === 'percent') {
-                    {{ +c.value }}%
-                  } @else {
-                    {{ +c.value | currency: 'INR' : 'symbol' : '1.0-0' }}
-                  }
-                  @if (c.minSubtotal) {
-                    <p class="text-2xs text-ink-400">
-                      Min {{ +c.minSubtotal | currency: 'INR' : 'symbol' : '1.0-0' }}
-                    </p>
-                  }
-                </td>
-                <td class="py-4 text-sm text-right tabular">
-                  {{ c.usedCount }}
-                  @if (c.usageLimit) {
-                    / {{ c.usageLimit }}
-                  }
-                </td>
-                <td class="py-4 text-sm text-ink-500">
-                  @if (c.startsAt || c.endsAt) {
-                    <span class="text-2xs">
-                      {{ c.startsAt ? (c.startsAt | date: 'dd MMM') : '—' }}
-                      to
-                      {{ c.endsAt ? (c.endsAt | date: 'dd MMM yy') : '—' }}
-                    </span>
-                  } @else {
-                    <span class="text-ink-400">Always</span>
-                  }
-                </td>
-                <td class="py-4 text-sm">
-                  <span [class]="statusClass(c)">{{ statusLabel(c) }}</span>
-                </td>
-                <td class="py-4 text-right">
-                  <div class="flex items-center justify-end gap-4">
-                    <button
-                      (click)="openEdit(c)"
-                      class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      (click)="deleteCoupon(c)"
-                      [disabled]="deletingId() === c.id"
-                      class="text-sm text-ink-400 hover:text-ink transition-colors link-underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
+        <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <table class="w-full min-w-[720px]">
+            <thead>
+              <tr class="border-b border-ink text-left text-sm">
+                <th class="pb-3 label">Code</th>
+                <th class="pb-3 label">Type</th>
+                <th class="pb-3 label text-right">Value</th>
+                <th class="pb-3 label text-right">Usage</th>
+                <th class="pb-3 label">Window</th>
+                <th class="pb-3 label">Status</th>
+                <th class="pb-3 label text-right">Actions</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (c of coupons(); track c.id) {
+                <tr class="border-b border-ink-200 hover:bg-ink-50/60 transition-colors">
+                  <td class="py-4">
+                    <p class="font-mono text-sm uppercase">{{ c.code }}</p>
+                    @if (c.firstOrderOnly) {
+                      <p class="text-2xs text-ink-400 mt-0.5">First order only</p>
+                    }
+                  </td>
+                  <td class="py-4 text-sm">{{ c.type | titlecase }}</td>
+                  <td class="py-4 text-sm text-right tabular">
+                    @if (c.type === 'percent') {
+                      {{ +c.value }}%
+                    } @else {
+                      {{ +c.value | currency: 'INR' : 'symbol' : '1.0-0' }}
+                    }
+                    @if (c.minSubtotal) {
+                      <p class="text-2xs text-ink-400">
+                        Min {{ +c.minSubtotal | currency: 'INR' : 'symbol' : '1.0-0' }}
+                      </p>
+                    }
+                  </td>
+                  <td class="py-4 text-sm text-right tabular">
+                    {{ c.usedCount }}
+                    @if (c.usageLimit) {
+                      / {{ c.usageLimit }}
+                    }
+                  </td>
+                  <td class="py-4 text-sm text-ink-500">
+                    @if (c.startsAt || c.endsAt) {
+                      <span class="text-2xs">
+                        {{ c.startsAt ? (c.startsAt | date: 'dd MMM') : '—' }}
+                        to
+                        {{ c.endsAt ? (c.endsAt | date: 'dd MMM yy') : '—' }}
+                      </span>
+                    } @else {
+                      <span class="text-ink-400">Always</span>
+                    }
+                  </td>
+                  <td class="py-4 text-sm">
+                    <span [class]="statusClass(c)">{{ statusLabel(c) }}</span>
+                  </td>
+                  <td class="py-4 text-right">
+                    <div class="flex items-center justify-end gap-4">
+                      <button
+                        (click)="openEdit(c)"
+                        class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        (click)="deleteCoupon(c)"
+                        [disabled]="deletingId() === c.id"
+                        class="text-sm text-ink-400 hover:text-ink transition-colors link-underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
 
         @if (meta(); as m) {
           @if (m.totalPages > 1) {

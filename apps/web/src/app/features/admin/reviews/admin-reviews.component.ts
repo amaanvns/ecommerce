@@ -11,7 +11,9 @@ const REVIEW_STATUSES = ['pending', 'approved', 'rejected'];
   imports: [DatePipe, TitleCasePipe, FormsModule, RouterLink],
   template: `
     <section class="border-b border-ink-200 bg-paper">
-      <div class="px-10 py-12 flex items-end justify-between gap-6">
+      <div
+        class="px-4 sm:px-6 lg:px-10 py-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6"
+      >
         <div>
           <h1 class="text-4xl font-light tracking-tighter">Reviews</h1>
           <p class="text-sm text-ink-500 mt-2 tabular">
@@ -33,7 +35,7 @@ const REVIEW_STATUSES = ['pending', 'approved', 'rejected'];
       </div>
     </section>
 
-    <div class="px-10 py-10">
+    <div class="px-4 sm:px-6 lg:px-10 py-10">
       @if (loading()) {
         <div class="space-y-px">
           @for (_ of [1, 2, 3, 4, 5]; track $index) {
