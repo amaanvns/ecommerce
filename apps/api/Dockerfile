@@ -14,7 +14,6 @@ COPY packages/shared-types/package.json ./packages/shared-types/
 RUN npm ci --include=dev
 
 # Copy sources and build
-COPY tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/api ./apps/api
 
