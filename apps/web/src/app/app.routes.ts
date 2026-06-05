@@ -43,6 +43,12 @@ export const routes: Routes = [
         title: 'Order Confirmed — Star Enterprises',
       },
       {
+        path: 'track-order',
+        loadComponent: () =>
+          import('./features/orders/track-order.component').then((m) => m.TrackOrderComponent),
+        title: 'Track Order — Star Enterprises',
+      },
+      {
         path: 'orders',
         loadComponent: () =>
           import('./features/orders/orders.component').then((m) => m.OrdersComponent),

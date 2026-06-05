@@ -39,6 +39,40 @@ ordersRouter.get('/guest/:id', async (req, res, next) => {
   }
 });
 
+// GET /api/v1/orders/track?orderNumber=…&email=… — public "track order" for guests,
+// who know their order number (not the internal id). Returns the order if the email matches.
+const guestTrackSchema = z.object({
+  orderNumber: z.string().trim().min(1),
+  email: z.string().email(),
+});
+
+ordersRouter.get('/track', async (req, res, next) => {
+  try {
+    const query = guestTrackSchema.safeParse(req.query);
+    if (!query.success) throw new AppError(400, 'Order number and a valid email are required');
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.orderNumber, query.data.orderNumber),
+          isNull(orders.userId),
+          sql`lower(${orders.contactEmail}) = lower(${query.data.email})`,
+        ),
+      )
+      .limit(1);
+
+    if (!order) throw new AppError(404, 'Order not found');
+
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+
+    res.json({ data: { ...order, items } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 ordersRouter.use(authenticate);
 
 // GET /api/v1/orders — list user's orders

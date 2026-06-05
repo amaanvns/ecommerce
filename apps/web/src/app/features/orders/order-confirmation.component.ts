@@ -82,6 +82,15 @@ import { AuthService } from '../../core/services/auth.service';
             >
           }
         </div>
+
+        @if (!auth.isAuthenticated()) {
+          <p class="mt-8 text-sm text-ink-400">
+            Keep your order number <span class="text-ink tabular">{{ o.orderNumber }}</span> — you
+            can
+            <a routerLink="/track-order" class="link-underline text-ink-500">track your order</a>
+            anytime with it and your email.
+          </p>
+        }
       </section>
     }
 

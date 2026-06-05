@@ -63,10 +63,14 @@ import { CartService } from '../../core/services/cart.service';
             <div>
               <p class="label mb-5">Service</p>
               <ul class="space-y-3 text-sm text-ink-500">
+                <li>
+                  <a routerLink="/track-order" class="hover:text-ink transition-colors"
+                    >Track Order</a
+                  >
+                </li>
                 <li><a class="hover:text-ink transition-colors">Contact</a></li>
                 <li><a class="hover:text-ink transition-colors">Shipping</a></li>
                 <li><a class="hover:text-ink transition-colors">Returns</a></li>
-                <li><a class="hover:text-ink transition-colors">FAQ</a></li>
               </ul>
             </div>
             <div>
