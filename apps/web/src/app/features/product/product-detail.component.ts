@@ -106,11 +106,11 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
 
               <div class="flex items-baseline gap-4 tabular">
                 <span class="text-xl">
-                  {{ +selectedVariant()!.price | currency }}
+                  {{ +selectedVariant()!.price | currency: 'INR' : 'symbol' : '1.0-0' }}
                 </span>
                 @if (selectedVariant()!.compareAtPrice) {
                   <span class="text-sm text-ink-400 line-through">
-                    {{ +selectedVariant()!.compareAtPrice! | currency }}
+                    {{ +selectedVariant()!.compareAtPrice! | currency: 'INR' : 'symbol' : '1.0-0' }}
                   </span>
                   <span class="text-sm text-ink-500">−{{ savingsPct() }}%</span>
                 }

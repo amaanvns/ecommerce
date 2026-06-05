@@ -36,7 +36,7 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
     <section class="container-edge pb-24 lg:pb-32">
       <div class="aspect-[16/9] lg:aspect-[21/9] hover-zoom bg-ink-50">
         <img
-          src="https://loremflickr.com/1600/900/saree,indian,fashion?lock=61"
+          src="https://images.unsplash.com/photo-1602210901882-071c6b9e239d?w=1600&q=80"
           alt="The new collection"
           class="w-full h-full object-cover"
           fetchpriority="high"
@@ -129,7 +129,7 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
         <div class="lg:col-span-5 lg:col-start-1">
           <div class="aspect-[4/5] hover-zoom bg-ink-50">
             <img
-              src="https://loremflickr.com/1000/1250/handloom,textile,india?lock=62"
+              src="https://images.unsplash.com/photo-1622780432053-767528938f34?w=1000&q=80"
               alt="Atelier"
               class="w-full h-full object-cover"
             />
@@ -199,10 +199,10 @@ export class HomeComponent implements OnInit {
   ];
 
   private readonly fallbacks = [
-    'https://loremflickr.com/1200/900/kurta,indian?lock=63',
-    'https://loremflickr.com/1200/900/saree?lock=64',
-    'https://loremflickr.com/1200/900/lehenga?lock=65',
-    'https://loremflickr.com/1200/900/sherwani?lock=66',
+    'https://images.unsplash.com/photo-1727835523545-70ee992b5763?w=1200&q=80',
+    'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&q=80',
+    'https://images.unsplash.com/photo-1668371679302-a8ec781e876e?w=1200&q=80',
+    'https://images.unsplash.com/photo-1610047402714-307d99a677db?w=1200&q=80',
   ];
 
   categoryFallback(i: number): string {

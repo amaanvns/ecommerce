@@ -1,60 +1,57 @@
 import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { notInArray } from 'drizzle-orm';
+import { eq, notInArray } from 'drizzle-orm';
 import * as schema from '../schema/index.js';
 
 const sql = neon(process.env['DATABASE_URL']!);
 const db = drizzle(sql, { schema });
 
-// Keyword-based photos so each item shows a relevant picture.
-// `lock` keeps the same image for the same item on every load.
-const lf = (keywords: string, lock: number) =>
-  `https://loremflickr.com/800/1000/${keywords}?lock=${lock}`;
-const lfTile = (keywords: string, lock: number) =>
-  `https://loremflickr.com/1200/900/${keywords}?lock=${lock}`;
+// Curated, hand-checked Unsplash photos (all verified to load) so each item
+// and department shows a clear, relevant picture.
+const u = (id: string, w = 900) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
 
 const CATEGORIES = [
   {
     name: 'Kurtas',
     slug: 'kurtas',
     description: 'Everyday and occasion kurtas',
-    imageUrl: lfTile('kurta,indian', 31),
+    imageUrl: u('1620730389810-9076d9dfff84', 1200),
     sortOrder: 0,
   },
   {
     name: 'Sarees',
     slug: 'sarees',
     description: 'Handwoven and silk sarees',
-    imageUrl: lfTile('saree', 32),
+    imageUrl: u('1615886753866-79396abc446e', 1200),
     sortOrder: 1,
   },
   {
     name: 'Lehengas',
     slug: 'lehengas',
     description: 'Festive and bridal wear',
-    imageUrl: lfTile('lehenga', 33),
+    imageUrl: u('1601571115502-83ca3095735b', 1200),
     sortOrder: 2,
   },
   {
     name: 'Sherwanis',
     slug: 'sherwanis',
     description: 'Sherwanis and ethnic jackets',
-    imageUrl: lfTile('sherwani', 34),
+    imageUrl: u('1534217466718-ef4950786e24', 1200),
     sortOrder: 3,
   },
   {
     name: 'Dupattas',
     slug: 'dupattas',
     description: 'Dupattas, stoles and finishing pieces',
-    imageUrl: lfTile('dupatta', 35),
+    imageUrl: u('1717585679395-bbe39b5fb6bc', 1200),
     sortOrder: 4,
   },
   {
     name: 'Home',
     slug: 'home',
     description: 'A small edit of handcrafted objects',
-    imageUrl: lfTile('blockprint,textile', 36),
+    imageUrl: u('1766994063823-ed214f883548', 1200),
     sortOrder: 5,
   },
 ];
@@ -71,7 +68,7 @@ const PRODUCTS = [
     brand: 'Lucknow Atelier',
     description:
       'A hand-embroidered Lucknowi chikankari kurta in breathable cotton. Light, airy, and made for everyday ease.',
-    images: [lf('kurta,indian', 41), lf('chikankari', 42)],
+    images: [u('1727835523545-70ee992b5763'), u('1622780432053-767528938f34')],
     sizes: SIZES,
     colors: ['Ivory', 'Powder Blue'],
     price: '2200.00',
@@ -84,7 +81,7 @@ const PRODUCTS = [
     brand: 'Banaras Loom',
     description:
       'A festive bandhgala-collar kurta in a soft silk blend with subtle self-weave. Pairs with churidar or trousers.',
-    images: [lf('kurta,silk', 43)],
+    images: [u('1628250521470-28c1fc54616c'), u('1667665970124-2273c6ef3489')],
     sizes: SIZES,
     colors: ['Maroon', 'Bottle Green'],
     price: '3400.00',
@@ -98,7 +95,7 @@ const PRODUCTS = [
     brand: 'Banaras Loom',
     description:
       'A pure Banarasi silk saree with intricate zari work and a contrast pallu. Comes with an unstitched blouse piece.',
-    images: [lf('saree,silk', 44), lf('banarasi', 45)],
+    images: [u('1618901185975-d59f7091bcfe'), u('1617627143750-d86bc21e42bb')],
     sizes: FREE,
     colors: ['Deep Red', 'Royal Blue', 'Emerald'],
     price: '8900.00',
@@ -111,7 +108,7 @@ const PRODUCTS = [
     brand: 'Kashida',
     description:
       'A lightweight handloom cotton saree with a woven temple border. Everyday elegance, made to drape softly.',
-    images: [lf('cotton,saree', 46)],
+    images: [u('1610030469983-98e550d6193c'), u('1609748340041-f5d61e061ebc')],
     sizes: FREE,
     colors: ['Mustard', 'Indigo'],
     price: '3200.00',
@@ -125,7 +122,7 @@ const PRODUCTS = [
     brand: 'Jaipur Atelier',
     description:
       'A hand-embroidered bridal lehenga with sequin and zardozi work, a flared skirt, blouse, and net dupatta.',
-    images: [lf('lehenga,bridal', 47), lf('lehenga', 48)],
+    images: [u('1668371679302-a8ec781e876e'), u('1619715613791-89d35b51ff81')],
     sizes: ['S', 'M', 'L'],
     colors: ['Rani Pink', 'Wine'],
     price: '18500.00',
@@ -138,7 +135,7 @@ const PRODUCTS = [
     brand: 'Anaya',
     description:
       'A floor-length Anarkali in flowing georgette with a fitted yoke and matching dupatta. Festive without the weight.',
-    images: [lf('anarkali,suit', 49)],
+    images: [u('1574847872646-abff244bbd87'), u('1602210901882-071c6b9e239d')],
     sizes: ['S', 'M', 'L'],
     colors: ['Teal', 'Blush'],
     price: '5600.00',
@@ -152,7 +149,7 @@ const PRODUCTS = [
     brand: 'Jaipur Atelier',
     description:
       'A regal sherwani in textured jacquard with thread embroidery and covered buttons. Includes a churidar.',
-    images: [lf('sherwani', 50), lf('sherwani,groom', 51)],
+    images: [u('1610047402714-307d99a677db'), u('1534217466718-ef4950786e24')],
     sizes: SIZES,
     colors: ['Cream', 'Gold'],
     price: '12900.00',
@@ -165,7 +162,7 @@ const PRODUCTS = [
     brand: 'Indigo & Ochre',
     description:
       'A tailored bandhgala Nehru jacket in handwoven cotton-silk. Layer it over a kurta for an instant occasion look.',
-    images: [lf('nehru,jacket', 52)],
+    images: [u('1555447405-057915b40299')],
     sizes: SIZES,
     colors: ['Black', 'Rust'],
     price: '3800.00',
@@ -179,7 +176,7 @@ const PRODUCTS = [
     brand: 'Kashida',
     description:
       'A hand-embroidered Phulkari dupatta in vibrant floss silk on a soft cotton base. A finishing piece for any kurta.',
-    images: [lf('dupatta,phulkari', 53)],
+    images: [u('1717586756136-d9a3eeb1fa6f')],
     sizes: FREE,
     colors: ['Fuchsia', 'Marigold'],
     price: '1900.00',
@@ -192,7 +189,7 @@ const PRODUCTS = [
     brand: 'Anaya',
     description:
       'A drawstring potli clutch with zardozi embroidery and a beaded handle. Just enough room for the essentials.',
-    images: [lf('potli,clutch', 54)],
+    images: [u('1714525316498-138fa36e2ddd')],
     sizes: FREE,
     colors: ['Gold', 'Maroon'],
     price: '1400.00',
@@ -206,7 +203,7 @@ const PRODUCTS = [
     brand: 'Mitti Studio',
     description:
       'A hand block-printed cotton cushion cover in natural dyes. Set of two, 16×16 inch, covers only.',
-    images: [lf('blockprint,cushion', 55)],
+    images: [u('1773846012458-e6a66c26e49f'), u('1768651925876-637f68cd64f6')],
     sizes: FREE,
     colors: ['Indigo', 'Madder Red'],
     price: '850.00',
@@ -219,7 +216,7 @@ const PRODUCTS = [
     brand: 'Mitti Studio',
     description:
       'A set of five hand-finished brass diyas with a warm antique patina. For festivals and quiet evenings alike.',
-    images: [lf('brass,diya', 56)],
+    images: [u('1605292356183-a77d0a9c9d1d'), u('1574266742257-41460b7992ee')],
     sizes: FREE,
     colors: ['Antique Brass'],
     price: '1200.00',
@@ -263,10 +260,8 @@ function buildVariants(p: (typeof PRODUCTS)[number]) {
 async function seed() {
   console.log('🌱 Seeding database (Indian wear catalogue)...');
 
-  // ── Reset: hide any previously-seeded demo products that aren't part of this
-  // catalogue, and clear the old categories. Soft-delete (not row delete) keeps
-  // things FK-safe for any orders/reviews that reference them. Scoped by slug so
-  // re-running this seed doesn't hide the current products.
+  // ── Reset: hide demo products that aren't part of this catalogue, and remove
+  // stale categories. Soft-delete keeps it FK-safe for existing orders/reviews.
   console.log('  → resetting old demo data');
   const keepSlugs = PRODUCTS.map((p) => p.slug);
   await db
@@ -280,16 +275,37 @@ async function seed() {
     ),
   );
 
-  // ── Categories
+  // ── Categories (upsert: insert new, refresh image/description on existing)
   console.log('  → categories');
-  await db.insert(schema.categories).values(CATEGORIES).onConflictDoNothing();
+  for (const c of CATEGORIES) {
+    const [existing] = await db
+      .select({ id: schema.categories.id })
+      .from(schema.categories)
+      .where(eq(schema.categories.slug, c.slug))
+      .limit(1);
+    if (existing) {
+      await db
+        .update(schema.categories)
+        .set({
+          name: c.name,
+          description: c.description,
+          imageUrl: c.imageUrl,
+          sortOrder: c.sortOrder,
+        })
+        .where(eq(schema.categories.id, existing.id));
+    } else {
+      await db.insert(schema.categories).values(c);
+    }
+  }
   const allCats = await db
     .select({ id: schema.categories.id, slug: schema.categories.slug })
     .from(schema.categories);
   const catMap = new Map(allCats.map((c) => [c.slug, c.id]));
   console.log(`     ${catMap.size} categories ready`);
 
-  // ── Products
+  // ── Products (upsert by slug). Images are always refreshed (no inbound FK,
+  // so safe to replace). Variants are only created when missing — never deleted
+  // — so existing test orders that reference them stay intact.
   let productCount = 0;
   for (const p of PRODUCTS) {
     const categoryId = catMap.get(p.category);
@@ -298,45 +314,70 @@ async function seed() {
       continue;
     }
 
-    const [inserted] = await db
-      .insert(schema.products)
-      .values({
-        name: p.name,
-        slug: p.slug,
-        brand: p.brand,
-        description: p.description,
-        categoryId,
-        isPublished: true,
-      })
-      .onConflictDoNothing()
-      .returning({ id: schema.products.id });
+    const [existing] = await db
+      .select({ id: schema.products.id })
+      .from(schema.products)
+      .where(eq(schema.products.slug, p.slug))
+      .limit(1);
 
-    if (!inserted) {
-      console.log(`  → skip existing: ${p.slug}`);
-      continue;
+    let productId: string;
+    if (existing) {
+      await db
+        .update(schema.products)
+        .set({
+          name: p.name,
+          brand: p.brand,
+          description: p.description,
+          categoryId,
+          isPublished: true,
+          deletedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.products.id, existing.id));
+      productId = existing.id;
+    } else {
+      const [ins] = await db
+        .insert(schema.products)
+        .values({
+          name: p.name,
+          slug: p.slug,
+          brand: p.brand,
+          description: p.description,
+          categoryId,
+          isPublished: true,
+        })
+        .returning({ id: schema.products.id });
+      productId = ins.id;
     }
 
-    const productId = inserted.id;
-
+    // Refresh images (delete + reinsert — images have no inbound FK).
+    await db.delete(schema.productImages).where(eq(schema.productImages.productId, productId));
     await db
       .insert(schema.productImages)
       .values(p.images.map((url, i) => ({ productId, url, alt: p.name, sortOrder: i })));
 
-    await db.insert(schema.productVariants).values(
-      buildVariants(p).map((v) => ({
-        productId,
-        sku: v.sku,
-        attributes: v.attributes,
-        price: v.price,
-        compareAtPrice: v.compareAtPrice ?? null,
-        stockQty: v.stock,
-      })),
-    );
+    // Ensure variants exist (create only when the product has none).
+    const variants = await db
+      .select({ id: schema.productVariants.id })
+      .from(schema.productVariants)
+      .where(eq(schema.productVariants.productId, productId));
+    if (variants.length === 0) {
+      await db.insert(schema.productVariants).values(
+        buildVariants(p).map((v) => ({
+          productId,
+          sku: v.sku,
+          attributes: v.attributes,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice ?? null,
+          stockQty: v.stock,
+        })),
+      );
+    }
 
     productCount++;
   }
 
-  console.log(`  → ${productCount} products seeded`);
+  console.log(`  → ${productCount} products ready`);
   console.log('✅ Done!');
 }
 

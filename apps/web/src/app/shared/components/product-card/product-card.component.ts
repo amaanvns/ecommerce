@@ -82,10 +82,10 @@ import { AuthService } from '../../../core/services/auth.service';
           <p class="text-sm text-ink-400">{{ product().brand }}</p>
         }
         <p class="text-sm text-ink tabular pt-1">
-          {{ +(product().minPrice ?? 0) | currency }}
+          {{ +(product().minPrice ?? 0) | currency: 'INR' : 'symbol' : '1.0-0' }}
           @if (hasDiscount()) {
             <span class="ml-2 text-ink-400 line-through text-xs">
-              {{ +product().compareAtPrice! | currency }}
+              {{ +product().compareAtPrice! | currency: 'INR' : 'symbol' : '1.0-0' }}
             </span>
           }
         </p>
