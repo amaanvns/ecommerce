@@ -166,29 +166,29 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
 
               <!-- Actions -->
               <div class="flex gap-3">
+                <button
+                  (click)="addToCart()"
+                  class="btn-primary flex-1"
+                  [disabled]="(selectedVariant()?.stockQty ?? 0) === 0 || addingToCart()"
+                >
+                  @if (addingToCart()) {
+                    <svg class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="opacity-25"
+                      />
+                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="2" />
+                    </svg>
+                    Adding…
+                  } @else {
+                    Add to Bag
+                  }
+                </button>
                 @if (auth.isAuthenticated()) {
-                  <button
-                    (click)="addToCart()"
-                    class="btn-primary flex-1"
-                    [disabled]="(selectedVariant()?.stockQty ?? 0) === 0 || addingToCart()"
-                  >
-                    @if (addingToCart()) {
-                      <svg class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          class="opacity-25"
-                        />
-                        <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="2" />
-                      </svg>
-                      Adding…
-                    } @else {
-                      Add to Bag
-                    }
-                  </button>
                   <button
                     (click)="toggleWishlist()"
                     class="px-5 border border-ink rounded-full transition-colors"
@@ -213,8 +213,6 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
                       />
                     </svg>
                   </button>
-                } @else {
-                  <a routerLink="/auth/login" class="btn-primary flex-1">Sign in to Purchase</a>
                 }
               </div>
 
