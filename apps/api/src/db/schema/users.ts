@@ -1,12 +1,4 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  pgEnum,
-  timestamp,
-  boolean,
-} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, pgEnum, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const userRoleEnum = pgEnum('user_role', ['customer', 'admin', 'super_admin']);
 
@@ -39,12 +31,15 @@ export const addresses = pgTable('addresses', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   label: varchar('label', { length: 100 }),
+  name: varchar('name', { length: 255 }).notNull(),
   line1: text('line1').notNull(),
   line2: text('line2'),
   city: varchar('city', { length: 100 }).notNull(),
   state: varchar('state', { length: 100 }).notNull(),
   postalCode: varchar('postal_code', { length: 20 }).notNull(),
   country: varchar('country', { length: 2 }).notNull().default('IN'),
+  phone: varchar('phone', { length: 30 }),
   isDefault: boolean('is_default').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

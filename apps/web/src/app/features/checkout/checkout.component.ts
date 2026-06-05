@@ -6,6 +6,7 @@ import { CartService } from '../../core/services/cart.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CheckoutService } from '../../core/services/checkout.service';
 import { CouponPreview, CouponsService } from '../../core/services/coupons.service';
+import { Address, AddressesService } from '../../core/services/addresses.service';
 
 @Component({
   selector: 'app-checkout',
@@ -27,6 +28,40 @@ import { CouponPreview, CouponsService } from '../../core/services/coupons.servi
           <!-- Form -->
           <div class="lg:col-span-7">
             <h2 class="text-2xl font-light tracking-tight mb-10">Shipping address</h2>
+
+            @if (auth.isAuthenticated() && savedAddresses().length > 0) {
+              <div class="mb-8 space-y-3">
+                <p class="label-input mb-1">Saved addresses</p>
+                @for (a of savedAddresses(); track a.id) {
+                  <button
+                    type="button"
+                    (click)="selectAddress(a)"
+                    class="w-full text-left border rounded-lg p-4 transition-colors"
+                    [class.border-ink]="selectedAddressId() === a.id"
+                    [class.border-ink-200]="selectedAddressId() !== a.id"
+                  >
+                    <p class="text-sm text-ink flex items-center gap-2">
+                      <span class="font-medium">{{ a.name }}</span>
+                      @if (a.isDefault) {
+                        <span class="text-2xs uppercase tracking-widest text-ink-400">Default</span>
+                      }
+                    </p>
+                    <p class="text-sm text-ink-500 mt-0.5">
+                      {{ a.line1 }}, {{ a.city }}, {{ a.state }} {{ a.postalCode }}
+                    </p>
+                  </button>
+                }
+                <button
+                  type="button"
+                  (click)="useNewAddress()"
+                  class="w-full text-left border rounded-lg p-4 transition-colors"
+                  [class.border-ink]="selectedAddressId() === null"
+                  [class.border-ink-200]="selectedAddressId() !== null"
+                >
+                  <p class="text-sm">+ Use a new address</p>
+                </button>
+              </div>
+            }
 
             <form [formGroup]="form" class="space-y-7">
               @if (!auth.isAuthenticated()) {
@@ -161,6 +196,18 @@ import { CouponPreview, CouponsService } from '../../core/services/coupons.servi
                   placeholder="Special instructions for our team"
                 ></textarea>
               </div>
+
+              @if (auth.isAuthenticated() && selectedAddressId() === null) {
+                <label class="flex items-center gap-3 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    [checked]="saveAddress()"
+                    (change)="saveAddress.set($any($event.target).checked)"
+                    class="accent-ink"
+                  />
+                  Save this address to my account
+                </label>
+              }
             </form>
           </div>
 
@@ -361,9 +408,16 @@ export class CheckoutComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly checkoutService = inject(CheckoutService);
   private readonly couponsService = inject(CouponsService);
+  private readonly addressesService = inject(AddressesService);
 
   readonly processing = signal(false);
   readonly error = signal('');
+
+  // Saved addresses (logged-in users)
+  readonly savedAddresses = signal<Address[]>([]);
+  readonly selectedAddressId = signal<string | null>(null);
+  readonly saveAddress = signal(true);
+  private static readonly GUEST_ADDRESS_KEY = 'guestAddress';
 
   // Payment method — COD only offered when every item in the bag allows it
   readonly paymentMethod = signal<'online' | 'cod'>('online');
@@ -403,10 +457,57 @@ export class CheckoutComponent implements OnInit {
     const user = this.auth.currentUser();
     if (user) {
       this.form.patchValue({ name: user.name });
+      // Load the saved address book; preselect the default
+      this.addressesService.list().subscribe({
+        next: (res) => {
+          this.savedAddresses.set(res.data);
+          const def = res.data.find((a) => a.isDefault) ?? res.data[0];
+          if (def) this.selectAddress(def);
+        },
+      });
     } else {
       // Guests must supply a contact email for confirmation + order lookup
       this.form.get('email')?.addValidators([Validators.required, Validators.email]);
       this.form.get('email')?.updateValueAndValidity();
+      this.prefillGuestAddress();
+    }
+  }
+
+  /** Fill the form from a saved address and mark it selected. */
+  selectAddress(a: Address): void {
+    this.selectedAddressId.set(a.id);
+    this.form.patchValue({
+      name: a.name,
+      phone: a.phone ?? '',
+      line1: a.line1,
+      line2: a.line2 ?? '',
+      city: a.city,
+      state: a.state,
+      postalCode: a.postalCode,
+    });
+  }
+
+  /** Switch to entering a fresh address (clears the shipping fields). */
+  useNewAddress(): void {
+    this.selectedAddressId.set(null);
+    this.saveAddress.set(true);
+    this.form.patchValue({
+      name: this.auth.currentUser()?.name ?? '',
+      phone: '',
+      line1: '',
+      line2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+    });
+  }
+
+  private prefillGuestAddress(): void {
+    try {
+      const raw = localStorage.getItem(CheckoutComponent.GUEST_ADDRESS_KEY);
+      if (raw) this.form.patchValue(JSON.parse(raw));
+    } catch {
+      // localStorage unavailable / bad JSON — ignore
     }
   }
 
@@ -463,6 +564,7 @@ export class CheckoutComponent implements OnInit {
       country: v.country ?? 'IN',
     };
     const contactEmail = this.auth.currentUser()?.email ?? v.email ?? undefined;
+    this.persistAddress(shippingAddress);
 
     if (this.paymentMethod() === 'cod') {
       this.checkoutService
@@ -535,6 +637,36 @@ export class CheckoutComponent implements OnInit {
           this.processing.set(false);
         },
       });
+  }
+
+  /**
+   * Save the entered address for reuse: logged-in users get it added to their
+   * address book (when it's a new one they opted to save); guests get it stashed
+   * in localStorage so it prefills next time. Side-effect only — never blocks checkout.
+   */
+  private persistAddress(addr: {
+    name: string;
+    phone?: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  }): void {
+    if (this.auth.isAuthenticated()) {
+      if (!this.selectedAddressId() && this.saveAddress()) {
+        this.addressesService
+          .create({ ...addr, isDefault: this.savedAddresses().length === 0 })
+          .subscribe({ next: () => {}, error: () => {} });
+      }
+    } else {
+      try {
+        localStorage.setItem(CheckoutComponent.GUEST_ADDRESS_KEY, JSON.stringify(addr));
+      } catch {
+        // ignore storage errors
+      }
+    }
   }
 
   /** Route to the right post-order page: logged-in → my orders; guest → confirmation. */

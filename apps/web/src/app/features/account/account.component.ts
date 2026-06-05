@@ -138,7 +138,7 @@ export class AccountComponent {
   readonly menuItems = [
     { label: 'Orders', desc: 'Track and manage your orders', route: '/orders' },
     { label: 'Saved items', desc: 'Products you saved for later', route: '/wishlist' },
-    { label: 'Addresses', desc: 'Manage your shipping addresses', route: '/account' },
+    { label: 'Addresses', desc: 'Manage your shipping addresses', route: '/account/addresses' },
     { label: 'Settings', desc: 'Preferences and password', route: '/account' },
   ];
 }

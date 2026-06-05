@@ -76,6 +76,13 @@ export const routes: Routes = [
         canActivate: [authGuard],
         title: 'My Account',
       },
+      {
+        path: 'account/addresses',
+        loadComponent: () =>
+          import('./features/account/addresses.component').then((m) => m.AddressesComponent),
+        canActivate: [authGuard],
+        title: 'Addresses — Star Enterprises',
+      },
     ],
   },
 
