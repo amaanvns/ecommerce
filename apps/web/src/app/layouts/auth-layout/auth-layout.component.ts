@@ -9,7 +9,7 @@ import { RouterOutlet, RouterLink } from '@angular/router';
       <!-- Image side -->
       <div
         class="relative hidden lg:block bg-cover bg-center"
-        style="background-image: url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1400&q=80')"
+        style="background-image: url('https://loremflickr.com/1400/1800/saree,indian,textile?lock=67')"
       >
         <div class="absolute inset-0 bg-ink/20"></div>
         <div class="relative h-full flex flex-col justify-between p-12 text-paper">

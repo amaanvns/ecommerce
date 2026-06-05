@@ -36,14 +36,7 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
     <section class="container-edge pb-24 lg:pb-32">
       <div class="aspect-[16/9] lg:aspect-[21/9] hover-zoom bg-ink-50">
         <img
-          src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80"
-          srcset="
-            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=75   800w,
-            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80 1200w,
-            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1800&q=80 1800w,
-            https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=2400&q=80 2400w
-          "
-          sizes="(min-width: 1280px) 1240px, 100vw"
+          src="https://loremflickr.com/1600/900/saree,indian,fashion?lock=61"
           alt="The new collection"
           class="w-full h-full object-cover"
           fetchpriority="high"
@@ -136,7 +129,7 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
         <div class="lg:col-span-5 lg:col-start-1">
           <div class="aspect-[4/5] hover-zoom bg-ink-50">
             <img
-              src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1000&q=80"
+              src="https://loremflickr.com/1000/1250/handloom,textile,india?lock=62"
               alt="Atelier"
               class="w-full h-full object-cover"
             />
@@ -206,10 +199,10 @@ export class HomeComponent implements OnInit {
   ];
 
   private readonly fallbacks = [
-    'https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=1200&q=80',
-    'https://images.unsplash.com/photo-1551803091-e20673f15770?w=1200&q=80',
-    'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1200&q=80',
-    'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&q=80',
+    'https://loremflickr.com/1200/900/kurta,indian?lock=63',
+    'https://loremflickr.com/1200/900/saree?lock=64',
+    'https://loremflickr.com/1200/900/lehenga?lock=65',
+    'https://loremflickr.com/1200/900/sherwani?lock=66',
   ];
 
   categoryFallback(i: number): string {

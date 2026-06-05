@@ -7,235 +7,227 @@ import * as schema from '../schema/index.js';
 const sql = neon(process.env['DATABASE_URL']!);
 const db = drizzle(sql, { schema });
 
-// Editorial scene photos (proven to load) used for the department tiles.
-const SCENE = {
-  rack: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80',
-  store: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80',
-  folded: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&q=80',
-  fashionA: 'https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=1200&q=80',
-  fashionB: 'https://images.unsplash.com/photo-1551803091-e20673f15770?w=1200&q=80',
-  fashionC: 'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1200&q=80',
-};
-
-// Keyword-based product photos so each item shows a relevant picture.
-// `lock` keeps the same image for the same product on every load.
+// Keyword-based photos so each item shows a relevant picture.
+// `lock` keeps the same image for the same item on every load.
 const lf = (keywords: string, lock: number) =>
   `https://loremflickr.com/800/1000/${keywords}?lock=${lock}`;
+const lfTile = (keywords: string, lock: number) =>
+  `https://loremflickr.com/1200/900/${keywords}?lock=${lock}`;
 
 const CATEGORIES = [
   {
-    name: 'Shirts',
-    slug: 'shirts',
-    description: 'Considered everyday shirting',
-    imageUrl: SCENE.folded,
+    name: 'Kurtas',
+    slug: 'kurtas',
+    description: 'Everyday and occasion kurtas',
+    imageUrl: lfTile('kurta,indian', 31),
     sortOrder: 0,
   },
   {
-    name: 'Trousers',
-    slug: 'trousers',
-    description: 'Tailored and relaxed fits',
-    imageUrl: SCENE.fashionB,
+    name: 'Sarees',
+    slug: 'sarees',
+    description: 'Handwoven and silk sarees',
+    imageUrl: lfTile('saree', 32),
     sortOrder: 1,
   },
   {
-    name: 'Outerwear',
-    slug: 'outerwear',
-    description: 'Coats and jackets for every season',
-    imageUrl: SCENE.rack,
+    name: 'Lehengas',
+    slug: 'lehengas',
+    description: 'Festive and bridal wear',
+    imageUrl: lfTile('lehenga', 33),
     sortOrder: 2,
   },
   {
-    name: 'Knitwear',
-    slug: 'knitwear',
-    description: 'Natural-fibre knits, made to last',
-    imageUrl: SCENE.fashionC,
+    name: 'Sherwanis',
+    slug: 'sherwanis',
+    description: 'Sherwanis and ethnic jackets',
+    imageUrl: lfTile('sherwani', 34),
     sortOrder: 3,
   },
   {
-    name: 'Accessories',
-    slug: 'accessories',
-    description: 'Bags, caps and finishing pieces',
-    imageUrl: SCENE.fashionA,
+    name: 'Dupattas',
+    slug: 'dupattas',
+    description: 'Dupattas, stoles and finishing pieces',
+    imageUrl: lfTile('dupatta', 35),
     sortOrder: 4,
   },
   {
     name: 'Home',
     slug: 'home',
-    description: 'A small edit of objects for the home',
-    imageUrl: SCENE.store,
+    description: 'A small edit of handcrafted objects',
+    imageUrl: lfTile('blockprint,textile', 36),
     sortOrder: 5,
   },
 ];
 
-const SIZES = ['S', 'M', 'L'];
-const WAISTS = ['30', '32', '34'];
+const SIZES = ['S', 'M', 'L', 'XL'];
+const FREE = ['One Size'];
 
 const PRODUCTS = [
-  // ── Shirts ─────────────────────────────────────────────────────────────────
+  // ── Kurtas ──────────────────────────────────────────────────────────────────
   {
-    category: 'shirts',
-    name: 'The Oxford Shirt',
-    slug: 'the-oxford-shirt',
-    brand: 'Atelier Nord',
+    category: 'kurtas',
+    name: 'Chikankari Cotton Kurta',
+    slug: 'chikankari-cotton-kurta',
+    brand: 'Lucknow Atelier',
     description:
-      'A button-down in heavyweight organic Oxford cotton. Cut for an easy, regular fit with a soft collar that wears in beautifully.',
-    images: [lf('white,shirt', 11), lf('folded,shirt', 12)],
+      'A hand-embroidered Lucknowi chikankari kurta in breathable cotton. Light, airy, and made for everyday ease.',
+    images: [lf('kurta,indian', 41), lf('chikankari', 42)],
     sizes: SIZES,
-    colors: ['White', 'Sky Blue'],
-    price: '2400.00',
-    compareAtPrice: '2900.00',
-  },
-  {
-    category: 'shirts',
-    name: 'Linen Camp Shirt',
-    slug: 'linen-camp-shirt',
-    brand: 'Maison Indigo',
-    description:
-      'A relaxed open-collar shirt in pure European linen. Breathable, lightly textured, and made for warm days.',
-    images: [lf('linen,shirt', 13)],
-    sizes: SIZES,
-    colors: ['Sand', 'Olive'],
-    price: '2650.00',
-    compareAtPrice: null,
-  },
-  // ── Trousers ───────────────────────────────────────────────────────────────
-  {
-    category: 'trousers',
-    name: 'Pleated Wool Trouser',
-    slug: 'pleated-wool-trouser',
-    brand: 'Atelier Nord',
-    description:
-      'A single-pleat trouser in a mid-weight wool blend with a clean, tapered leg. Smart enough for the office, soft enough for the weekend.',
-    images: [lf('wool,trousers', 14)],
-    sizes: WAISTS,
-    colors: ['Charcoal', 'Stone'],
-    price: '3800.00',
-    compareAtPrice: null,
-    sizeLabel: 'Waist',
-  },
-  {
-    category: 'trousers',
-    name: 'Organic Cotton Chino',
-    slug: 'organic-cotton-chino',
-    brand: 'Field & Co.',
-    description:
-      'A garment-dyed chino in stretch organic cotton. Wrinkle-resistant with a slim-straight cut.',
-    images: [lf('chino,trousers', 15)],
-    sizes: WAISTS,
-    colors: ['Khaki', 'Navy'],
+    colors: ['Ivory', 'Powder Blue'],
     price: '2200.00',
     compareAtPrice: '2800.00',
-    sizeLabel: 'Waist',
-  },
-  // ── Outerwear ──────────────────────────────────────────────────────────────
-  {
-    category: 'outerwear',
-    name: 'The Linen Overcoat',
-    slug: 'the-linen-overcoat',
-    brand: 'Maison Indigo',
-    description:
-      'An unstructured overcoat in a heavy linen-wool blend. Fully lined, with patch pockets and a single-breasted front.',
-    images: [lf('wool,coat', 16), lf('overcoat', 17)],
-    sizes: SIZES,
-    colors: ['Bone', 'Camel'],
-    price: '8900.00',
-    compareAtPrice: '11000.00',
   },
   {
-    category: 'outerwear',
-    name: 'Quilted Field Jacket',
-    slug: 'quilted-field-jacket',
-    brand: 'Field & Co.',
+    category: 'kurtas',
+    name: 'Silk Bandhgala Kurta',
+    slug: 'silk-bandhgala-kurta',
+    brand: 'Banaras Loom',
     description:
-      'A diamond-quilted jacket with a corduroy collar and snap front. Lightweight warmth for the in-between months.',
-    images: [lf('jacket', 18)],
+      'A festive bandhgala-collar kurta in a soft silk blend with subtle self-weave. Pairs with churidar or trousers.',
+    images: [lf('kurta,silk', 43)],
     sizes: SIZES,
-    colors: ['Forest', 'Black'],
-    price: '6500.00',
-    compareAtPrice: null,
-  },
-  // ── Knitwear ───────────────────────────────────────────────────────────────
-  {
-    category: 'knitwear',
-    name: 'Merino Crew Knit',
-    slug: 'merino-crew-knit',
-    brand: 'The Knittery',
-    description:
-      'A fine-gauge crew-neck in extra-fine merino wool. Soft, breathable, and easy to layer.',
-    images: [lf('sweater,knit', 19)],
-    sizes: SIZES,
-    colors: ['Oatmeal', 'Navy', 'Charcoal'],
+    colors: ['Maroon', 'Bottle Green'],
     price: '3400.00',
     compareAtPrice: null,
   },
+  // ── Sarees ──────────────────────────────────────────────────────────────────
   {
-    category: 'knitwear',
-    name: 'Lambswool Cardigan',
-    slug: 'lambswool-cardigan',
-    brand: 'The Knittery',
-    description: 'A relaxed cardigan in brushed lambswool with corozo buttons and ribbed cuffs.',
-    images: [lf('cardigan,wool', 20)],
+    category: 'sarees',
+    name: 'Banarasi Silk Saree',
+    slug: 'banarasi-silk-saree',
+    brand: 'Banaras Loom',
+    description:
+      'A pure Banarasi silk saree with intricate zari work and a contrast pallu. Comes with an unstitched blouse piece.',
+    images: [lf('saree,silk', 44), lf('banarasi', 45)],
+    sizes: FREE,
+    colors: ['Deep Red', 'Royal Blue', 'Emerald'],
+    price: '8900.00',
+    compareAtPrice: '11500.00',
+  },
+  {
+    category: 'sarees',
+    name: 'Handwoven Cotton Saree',
+    slug: 'handwoven-cotton-saree',
+    brand: 'Kashida',
+    description:
+      'A lightweight handloom cotton saree with a woven temple border. Everyday elegance, made to drape softly.',
+    images: [lf('cotton,saree', 46)],
+    sizes: FREE,
+    colors: ['Mustard', 'Indigo'],
+    price: '3200.00',
+    compareAtPrice: null,
+  },
+  // ── Lehengas ────────────────────────────────────────────────────────────────
+  {
+    category: 'lehengas',
+    name: 'Embroidered Bridal Lehenga',
+    slug: 'embroidered-bridal-lehenga',
+    brand: 'Jaipur Atelier',
+    description:
+      'A hand-embroidered bridal lehenga with sequin and zardozi work, a flared skirt, blouse, and net dupatta.',
+    images: [lf('lehenga,bridal', 47), lf('lehenga', 48)],
+    sizes: ['S', 'M', 'L'],
+    colors: ['Rani Pink', 'Wine'],
+    price: '18500.00',
+    compareAtPrice: '24000.00',
+  },
+  {
+    category: 'lehengas',
+    name: 'Georgette Anarkali Suit',
+    slug: 'georgette-anarkali-suit',
+    brand: 'Anaya',
+    description:
+      'A floor-length Anarkali in flowing georgette with a fitted yoke and matching dupatta. Festive without the weight.',
+    images: [lf('anarkali,suit', 49)],
+    sizes: ['S', 'M', 'L'],
+    colors: ['Teal', 'Blush'],
+    price: '5600.00',
+    compareAtPrice: null,
+  },
+  // ── Sherwanis & Jackets ─────────────────────────────────────────────────────
+  {
+    category: 'sherwanis',
+    name: 'Classic Sherwani',
+    slug: 'classic-sherwani',
+    brand: 'Jaipur Atelier',
+    description:
+      'A regal sherwani in textured jacquard with thread embroidery and covered buttons. Includes a churidar.',
+    images: [lf('sherwani', 50), lf('sherwani,groom', 51)],
     sizes: SIZES,
-    colors: ['Moss', 'Ecru'],
-    price: '4200.00',
-    compareAtPrice: '4900.00',
+    colors: ['Cream', 'Gold'],
+    price: '12900.00',
+    compareAtPrice: null,
   },
-  // ── Accessories ────────────────────────────────────────────────────────────
   {
-    category: 'accessories',
-    name: 'Leather Holdall',
-    slug: 'leather-holdall',
-    brand: 'Hide & Stitch',
+    category: 'sherwanis',
+    name: 'Nehru Jacket',
+    slug: 'nehru-jacket',
+    brand: 'Indigo & Ochre',
     description:
-      'A weekend holdall in vegetable-tanned leather that patinas with use. Cotton-twill lining and a detachable strap.',
-    images: [lf('leather,bag', 21)],
-    sizes: ['One Size'],
-    colors: ['Tan', 'Dark Brown'],
-    price: '7800.00',
+      'A tailored bandhgala Nehru jacket in handwoven cotton-silk. Layer it over a kurta for an instant occasion look.',
+    images: [lf('nehru,jacket', 52)],
+    sizes: SIZES,
+    colors: ['Black', 'Rust'],
+    price: '3800.00',
+    compareAtPrice: '4600.00',
+  },
+  // ── Dupattas & Accessories ──────────────────────────────────────────────────
+  {
+    category: 'dupattas',
+    name: 'Phulkari Dupatta',
+    slug: 'phulkari-dupatta',
+    brand: 'Kashida',
+    description:
+      'A hand-embroidered Phulkari dupatta in vibrant floss silk on a soft cotton base. A finishing piece for any kurta.',
+    images: [lf('dupatta,phulkari', 53)],
+    sizes: FREE,
+    colors: ['Fuchsia', 'Marigold'],
+    price: '1900.00',
     compareAtPrice: null,
   },
   {
-    category: 'accessories',
-    name: 'Wool Baker Cap',
-    slug: 'wool-baker-cap',
-    brand: 'Hide & Stitch',
-    description: 'A classic baker-boy cap in a herringbone wool tweed with a quilted lining.',
-    images: [lf('flat,cap', 22)],
-    sizes: ['One Size'],
-    colors: ['Grey', 'Brown'],
-    price: '1300.00',
+    category: 'dupattas',
+    name: 'Embroidered Potli Bag',
+    slug: 'embroidered-potli-bag',
+    brand: 'Anaya',
+    description:
+      'A drawstring potli clutch with zardozi embroidery and a beaded handle. Just enough room for the essentials.',
+    images: [lf('potli,clutch', 54)],
+    sizes: FREE,
+    colors: ['Gold', 'Maroon'],
+    price: '1400.00',
     compareAtPrice: null,
   },
-  // ── Home (the few non-clothing pieces) ──────────────────────────────────────
+  // ── Home (the few handcrafted objects) ──────────────────────────────────────
   {
     category: 'home',
-    name: 'Soy Wax Candle',
-    slug: 'soy-wax-candle',
-    brand: 'Ember & Co.',
+    name: 'Block-Print Cushion Cover',
+    slug: 'block-print-cushion-cover',
+    brand: 'Mitti Studio',
     description:
-      'A hand-poured soy candle with notes of cedar, vetiver and a trace of smoke. 50-hour burn time.',
-    images: [lf('candle', 23)],
-    sizes: ['One Size'],
-    colors: ['Cedar & Smoke'],
-    price: '950.00',
+      'A hand block-printed cotton cushion cover in natural dyes. Set of two, 16×16 inch, covers only.',
+    images: [lf('blockprint,cushion', 55)],
+    sizes: FREE,
+    colors: ['Indigo', 'Madder Red'],
+    price: '850.00',
     compareAtPrice: null,
   },
   {
     category: 'home',
-    name: 'Linen Throw Blanket',
-    slug: 'linen-throw-blanket',
-    brand: 'Ember & Co.',
+    name: 'Brass Diya Set',
+    slug: 'brass-diya-set',
+    brand: 'Mitti Studio',
     description:
-      'A stonewashed linen throw with hand-knotted fringe. Light enough for summer, layered for winter.',
-    images: [lf('blanket,linen', 24)],
-    sizes: ['One Size'],
-    colors: ['Flax', 'Slate'],
-    price: '3600.00',
-    compareAtPrice: '4200.00',
+      'A set of five hand-finished brass diyas with a warm antique patina. For festivals and quiet evenings alike.',
+    images: [lf('brass,diya', 56)],
+    sizes: FREE,
+    colors: ['Antique Brass'],
+    price: '1200.00',
+    compareAtPrice: '1500.00',
   },
 ];
 
-// Build the variant rows for a product: one per colour × size combination.
+// Build variant rows: one per colour × size combination.
 function buildVariants(p: (typeof PRODUCTS)[number]) {
   const sizeKey = (p as { sizeLabel?: string }).sizeLabel ?? 'Size';
   const skuBase = p.slug
@@ -269,12 +261,12 @@ function buildVariants(p: (typeof PRODUCTS)[number]) {
 }
 
 async function seed() {
-  console.log('🌱 Seeding database (clothing catalogue)...');
+  console.log('🌱 Seeding database (Indian wear catalogue)...');
 
   // ── Reset: hide any previously-seeded demo products that aren't part of this
-  // clothing catalogue, and clear the old categories. Soft-delete (not row
-  // delete) keeps things FK-safe for any orders/reviews that reference them.
-  // Scoped by slug so re-running this seed doesn't hide the clothing products.
+  // catalogue, and clear the old categories. Soft-delete (not row delete) keeps
+  // things FK-safe for any orders/reviews that reference them. Scoped by slug so
+  // re-running this seed doesn't hide the current products.
   console.log('  → resetting old demo data');
   const keepSlugs = PRODUCTS.map((p) => p.slug);
   await db
