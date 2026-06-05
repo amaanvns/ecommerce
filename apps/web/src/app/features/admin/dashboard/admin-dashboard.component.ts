@@ -134,10 +134,10 @@ import {
                   <tbody>
                     @for (p of topProducts(); track p.productId; let i = $index) {
                       <tr class="border-b border-ink-200 hover:bg-ink-50/60 transition-colors">
-                        <td class="py-3 w-8 text-sm text-ink-400 tabular">
+                        <td class="py-3 pr-6 w-8 text-sm text-ink-400 tabular">
                           {{ i + 1 | number: '2.0' }}
                         </td>
-                        <td class="py-3">
+                        <td class="py-3 pr-6">
                           <a
                             [routerLink]="['/products', p.productSlug]"
                             target="_blank"
@@ -146,10 +146,12 @@ import {
                             {{ p.productName }}
                           </a>
                         </td>
-                        <td class="py-3 text-sm text-ink-500 text-right tabular whitespace-nowrap">
+                        <td
+                          class="py-3 pr-6 text-sm text-ink-500 text-right tabular whitespace-nowrap"
+                        >
                           {{ p.unitsSold | number: '1.0-0' }} sold
                         </td>
-                        <td class="py-3 text-sm text-right tabular whitespace-nowrap">
+                        <td class="py-3 pr-6 text-sm text-right tabular whitespace-nowrap">
                           {{ p.revenue | currency: 'INR' : 'symbol' : '1.0-0' }}
                         </td>
                       </tr>
@@ -229,25 +231,25 @@ import {
               <table class="w-full min-w-[480px]">
                 <thead>
                   <tr class="border-b border-ink text-left">
-                    <th class="pb-3 label">Order</th>
-                    <th class="pb-3 label">Customer</th>
-                    <th class="pb-3 label">Status</th>
-                    <th class="pb-3 label">Date</th>
-                    <th class="pb-3 label text-right">Total</th>
+                    <th class="pb-3 pr-6 label">Order</th>
+                    <th class="pb-3 pr-6 label">Customer</th>
+                    <th class="pb-3 pr-6 label">Status</th>
+                    <th class="pb-3 pr-6 label">Date</th>
+                    <th class="pb-3 pr-6 label text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (order of stats()!.recentOrders; track order.id) {
                     <tr class="border-b border-ink-200">
-                      <td class="py-4 text-sm tabular">{{ order.orderNumber }}</td>
-                      <td class="py-4 text-sm text-ink-500 truncate max-w-[200px]">
+                      <td class="py-4 pr-6 text-sm tabular">{{ order.orderNumber }}</td>
+                      <td class="py-4 pr-6 text-sm text-ink-500 truncate max-w-[200px]">
                         {{ order.userEmail ?? '—' }}
                       </td>
-                      <td class="py-4 text-sm">{{ order.status | titlecase }}</td>
-                      <td class="py-4 text-sm text-ink-500">
+                      <td class="py-4 pr-6 text-sm">{{ order.status | titlecase }}</td>
+                      <td class="py-4 pr-6 text-sm text-ink-500">
                         {{ order.placedAt | date: 'dd MMM' }}
                       </td>
-                      <td class="py-4 text-sm tabular text-right">
+                      <td class="py-4 pr-6 text-sm tabular text-right">
                         {{ +order.total | currency: 'INR' : 'symbol' : '1.0-0' }}
                       </td>
                     </tr>

@@ -46,45 +46,45 @@ const ORDER_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'
           <table class="w-full min-w-[680px]">
             <thead>
               <tr class="border-b border-ink text-left">
-                <th class="pb-3 label">Order No.</th>
-                <th class="pb-3 label">Customer</th>
-                <th class="pb-3 label">Date</th>
-                <th class="pb-3 label">Payment</th>
-                <th class="pb-3 label text-right">Total</th>
-                <th class="pb-3 label">Status</th>
+                <th class="pb-3 pr-6 label">Order No.</th>
+                <th class="pb-3 pr-6 label">Customer</th>
+                <th class="pb-3 pr-6 label">Date</th>
+                <th class="pb-3 pr-6 label">Payment</th>
+                <th class="pb-3 pr-8 label text-right">Total</th>
+                <th class="pb-3 label text-right">Status</th>
               </tr>
             </thead>
             <tbody>
               @for (order of orders(); track order.id) {
                 <tr class="border-b border-ink-200 hover:bg-ink-50 transition-colors">
-                  <td class="py-4 font-mono text-xs">{{ order.orderNumber }}</td>
-                  <td class="py-4">
-                    <p class="text-base leading-tight truncate max-w-[180px]">
+                  <td class="py-4 pr-6 font-mono text-xs whitespace-nowrap">
+                    {{ order.orderNumber }}
+                  </td>
+                  <td class="py-4 pr-6">
+                    <p class="text-sm leading-tight truncate max-w-[180px]">
                       {{ order.userName ?? '—' }}
                     </p>
-                    <p
-                      class="text-2xs uppercase tracking-widest text-ink-400 truncate max-w-[180px] mt-0.5"
-                    >
+                    <p class="text-xs text-ink-400 truncate max-w-[180px] mt-0.5">
                       {{ order.userEmail ?? '' }}
                     </p>
                   </td>
-                  <td class="py-4 text-sm text-ink-500 whitespace-nowrap">
+                  <td class="py-4 pr-6 text-sm text-ink-500 whitespace-nowrap">
                     {{ order.placedAt | date: 'dd MMM yyyy' }}
                   </td>
-                  <td class="py-4">
+                  <td class="py-4 pr-6">
                     <span class="badge border" [class]="paymentClass(order.paymentStatus)">
                       {{ order.paymentStatus | titlecase }}
                     </span>
                   </td>
-                  <td class="py-4 font-mono text-sm text-right whitespace-nowrap">
+                  <td class="py-4 pr-8 font-mono text-sm text-right whitespace-nowrap">
                     {{ +order.total | currency: 'INR' : 'symbol' : '1.2-2' }}
                   </td>
-                  <td class="py-4">
+                  <td class="py-4 text-right">
                     <select
                       [value]="order.status"
                       (change)="updateStatus(order, $any($event.target).value)"
                       [disabled]="updating() === order.id"
-                      class="text-2xs uppercase tracking-widest border border-ink-200 px-2 py-1.5 bg-transparent focus:ring-0 focus:border-ink focus:outline-none disabled:opacity-50 cursor-pointer"
+                      class="text-2xs uppercase tracking-widest border border-ink-200 px-3 py-2 bg-transparent focus:ring-0 focus:border-ink focus:outline-none disabled:opacity-50 cursor-pointer rounded"
                     >
                       @for (s of statuses; track s) {
                         <option [value]="s">{{ s | titlecase }}</option>

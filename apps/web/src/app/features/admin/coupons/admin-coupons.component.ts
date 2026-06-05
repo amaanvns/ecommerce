@@ -41,26 +41,26 @@ import { AdminCoupon, AdminService, PaginatedMeta } from '../../../core/services
           <table class="w-full min-w-[720px]">
             <thead>
               <tr class="border-b border-ink text-left text-sm">
-                <th class="pb-3 label">Code</th>
-                <th class="pb-3 label">Type</th>
-                <th class="pb-3 label text-right">Value</th>
-                <th class="pb-3 label text-right">Usage</th>
-                <th class="pb-3 label">Window</th>
-                <th class="pb-3 label">Status</th>
-                <th class="pb-3 label text-right">Actions</th>
+                <th class="pb-3 pr-6 label">Code</th>
+                <th class="pb-3 pr-6 label">Type</th>
+                <th class="pb-3 pr-6 label text-right">Value</th>
+                <th class="pb-3 pr-6 label text-right">Usage</th>
+                <th class="pb-3 pr-6 label">Window</th>
+                <th class="pb-3 pr-6 label">Status</th>
+                <th class="pb-3 pr-6 label text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               @for (c of coupons(); track c.id) {
                 <tr class="border-b border-ink-200 hover:bg-ink-50/60 transition-colors">
-                  <td class="py-4">
+                  <td class="py-4 pr-6">
                     <p class="font-mono text-sm uppercase">{{ c.code }}</p>
                     @if (c.firstOrderOnly) {
                       <p class="text-2xs text-ink-400 mt-0.5">First order only</p>
                     }
                   </td>
-                  <td class="py-4 text-sm">{{ c.type | titlecase }}</td>
-                  <td class="py-4 text-sm text-right tabular">
+                  <td class="py-4 pr-6 text-sm">{{ c.type | titlecase }}</td>
+                  <td class="py-4 pr-6 text-sm text-right tabular">
                     @if (c.type === 'percent') {
                       {{ +c.value }}%
                     } @else {
@@ -72,13 +72,13 @@ import { AdminCoupon, AdminService, PaginatedMeta } from '../../../core/services
                       </p>
                     }
                   </td>
-                  <td class="py-4 text-sm text-right tabular">
+                  <td class="py-4 pr-6 text-sm text-right tabular">
                     {{ c.usedCount }}
                     @if (c.usageLimit) {
                       / {{ c.usageLimit }}
                     }
                   </td>
-                  <td class="py-4 text-sm text-ink-500">
+                  <td class="py-4 pr-6 text-sm text-ink-500">
                     @if (c.startsAt || c.endsAt) {
                       <span class="text-2xs">
                         {{ c.startsAt ? (c.startsAt | date: 'dd MMM') : '—' }}
@@ -89,10 +89,10 @@ import { AdminCoupon, AdminService, PaginatedMeta } from '../../../core/services
                       <span class="text-ink-400">Always</span>
                     }
                   </td>
-                  <td class="py-4 text-sm">
+                  <td class="py-4 pr-6 text-sm">
                     <span [class]="statusClass(c)">{{ statusLabel(c) }}</span>
                   </td>
-                  <td class="py-4 text-right">
+                  <td class="py-4 pr-6 text-right">
                     <div class="flex items-center justify-end gap-4">
                       <button
                         (click)="openEdit(c)"

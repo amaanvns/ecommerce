@@ -39,12 +39,12 @@ import { AdminService, AdminUserRow, PaginatedMeta } from '../../../core/service
           <table class="w-full min-w-[680px]">
             <thead>
               <tr class="border-b border-ink text-left">
-                <th class="pb-3 label">Customer</th>
-                <th class="pb-3 label">Role</th>
-                <th class="pb-3 label text-center">Orders</th>
-                <th class="pb-3 label">Joined</th>
-                <th class="pb-3 label">Status</th>
-                <th class="pb-3 label text-right">Action</th>
+                <th class="pb-3 pr-6 label">Customer</th>
+                <th class="pb-3 pr-6 label">Role</th>
+                <th class="pb-3 pr-6 label text-center">Orders</th>
+                <th class="pb-3 pr-6 label">Joined</th>
+                <th class="pb-3 pr-6 label">Status</th>
+                <th class="pb-3 pr-6 label text-right">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -53,29 +53,29 @@ import { AdminService, AdminUserRow, PaginatedMeta } from '../../../core/service
                   class="border-b border-ink-200 hover:bg-ink-50 transition-colors"
                   [class.opacity-50]="togglingId() === user.id"
                 >
-                  <td class="py-4">
+                  <td class="py-4 pr-6">
                     <p class="text-base leading-tight">{{ user.name }}</p>
                     <p class="text-2xs uppercase tracking-widest text-ink-400 mt-0.5">
                       {{ user.email }}
                     </p>
                   </td>
-                  <td class="py-4">
+                  <td class="py-4 pr-6">
                     <span class="badge border" [class]="roleClass(user.role)">{{
                       user.role | titlecase
                     }}</span>
                   </td>
-                  <td class="py-4 font-mono text-sm text-center">{{ user.orderCount }}</td>
-                  <td class="py-4 text-sm text-ink-500 whitespace-nowrap">
+                  <td class="py-4 pr-6 font-mono text-sm text-center">{{ user.orderCount }}</td>
+                  <td class="py-4 pr-6 text-sm text-ink-500 whitespace-nowrap">
                     {{ user.createdAt | date: 'dd MMM yyyy' }}
                   </td>
-                  <td class="py-4">
+                  <td class="py-4 pr-6">
                     @if (user.isBlocked) {
                       <span class="badge border border-ink text-ink">Blocked</span>
                     } @else {
                       <span class="badge border border-ink text-ink">Active</span>
                     }
                   </td>
-                  <td class="py-4 text-right">
+                  <td class="py-4 pr-6 text-right">
                     <button
                       (click)="toggleBlock(user)"
                       [disabled]="togglingId() === user.id"

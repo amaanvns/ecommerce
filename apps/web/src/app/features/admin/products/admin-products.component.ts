@@ -43,13 +43,13 @@ import { AdminService, AdminProductRow, PaginatedMeta } from '../../../core/serv
           <table class="w-full min-w-[720px]">
             <thead>
               <tr class="border-b border-ink text-left">
-                <th class="pb-3 label">Product</th>
-                <th class="pb-3 label">Category</th>
-                <th class="pb-3 label text-center">Variants</th>
-                <th class="pb-3 label text-center">Stock</th>
-                <th class="pb-3 label text-right">Min Price</th>
-                <th class="pb-3 label text-center">Live</th>
-                <th class="pb-3 label text-right">Actions</th>
+                <th class="pb-3 pr-6 label">Product</th>
+                <th class="pb-3 pr-6 label">Category</th>
+                <th class="pb-3 pr-6 label text-center">Variants</th>
+                <th class="pb-3 pr-6 label text-center">Stock</th>
+                <th class="pb-3 pr-6 label text-right">Min Price</th>
+                <th class="pb-3 pr-6 label text-center">Live</th>
+                <th class="pb-3 pr-6 label text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -58,7 +58,7 @@ import { AdminService, AdminProductRow, PaginatedMeta } from '../../../core/serv
                   class="border-b border-ink-200 hover:bg-ink-50 transition-colors"
                   [class.opacity-50]="togglingId() === product.id || deletingId() === product.id"
                 >
-                  <td class="py-4">
+                  <td class="py-4 pr-6">
                     <p class="text-base leading-tight">{{ product.name }}</p>
                     @if (product.brand) {
                       <p class="text-2xs uppercase tracking-widest text-ink-400 mt-1">
@@ -66,21 +66,23 @@ import { AdminService, AdminProductRow, PaginatedMeta } from '../../../core/serv
                       </p>
                     }
                   </td>
-                  <td class="py-4 text-sm text-ink-500">{{ product.categoryName ?? '—' }}</td>
-                  <td class="py-4 font-mono text-sm text-center">{{ product.variantCount }}</td>
-                  <td class="py-4 font-mono text-sm text-center">
+                  <td class="py-4 pr-6 text-sm text-ink-500">{{ product.categoryName ?? '—' }}</td>
+                  <td class="py-4 pr-6 font-mono text-sm text-center">
+                    {{ product.variantCount }}
+                  </td>
+                  <td class="py-4 pr-6 font-mono text-sm text-center">
                     <span [class.text-ink]="product.totalStock === 0">{{
                       product.totalStock
                     }}</span>
                   </td>
-                  <td class="py-4 font-mono text-sm text-right">
+                  <td class="py-4 pr-6 font-mono text-sm text-right">
                     @if (product.minPrice) {
                       {{ +product.minPrice | currency: 'INR' : 'symbol' : '1.2-2' }}
                     } @else {
                       —
                     }
                   </td>
-                  <td class="py-4 text-center">
+                  <td class="py-4 pr-6 text-center">
                     <button
                       (click)="togglePublish(product)"
                       [disabled]="togglingId() === product.id"
@@ -95,7 +97,7 @@ import { AdminService, AdminProductRow, PaginatedMeta } from '../../../core/serv
                       ></span>
                     </button>
                   </td>
-                  <td class="py-4 text-right">
+                  <td class="py-4 pr-6 text-right">
                     <div class="flex items-center justify-end gap-4">
                       <a
                         [routerLink]="['/admin/products', product.id, 'edit']"
