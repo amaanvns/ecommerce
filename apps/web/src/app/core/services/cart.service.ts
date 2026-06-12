@@ -24,7 +24,8 @@ export interface CartItem {
 }
 
 interface CartResponse {
-  data: { id: string; items: CartItem[]; total: string };
+  // id is null when the visitor has no cart yet (GET /cart never creates one)
+  data: { id: string | null; items: CartItem[]; total: string };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -58,11 +59,23 @@ export class CartService {
     });
   }
 
+  /**
+   * Monotonic sequence for cart mutations. Rapid +/- clicks fire overlapping
+   * requests whose responses can arrive out of order — only the response to the
+   * most recent request may update the items signal.
+   */
+  private seq = 0;
+
+  private applyLatest(items: CartItem[], seq: number): void {
+    if (seq === this.seq) this.items.set(items);
+  }
+
   load(): void {
+    const seq = ++this.seq;
     this.loading.set(true);
     this.http.get<CartResponse>(`${this.api}/cart`).subscribe({
       next: (res) => {
-        this.items.set(res.data.items);
+        this.applyLatest(res.data.items, seq);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -71,10 +84,11 @@ export class CartService {
 
   /** Fold any guest (cookie) cart into the logged-in user's cart, then show it. */
   merge(): void {
+    const seq = ++this.seq;
     this.loading.set(true);
     this.http.post<CartResponse>(`${this.api}/cart/merge`, {}).subscribe({
       next: (res) => {
-        this.items.set(res.data.items);
+        this.applyLatest(res.data.items, seq);
         this.loading.set(false);
       },
       error: () => {
@@ -93,26 +107,30 @@ export class CartService {
   }
 
   addItem(variantId: string, qty = 1): Observable<CartResponse> {
+    const seq = ++this.seq;
     return this.http
       .post<CartResponse>(`${this.api}/cart/items`, { variantId, qty })
-      .pipe(tap((res) => this.items.set(res.data.items)));
+      .pipe(tap((res) => this.applyLatest(res.data.items, seq)));
   }
 
   updateQty(itemId: string, qty: number): Observable<CartResponse> {
+    const seq = ++this.seq;
     return this.http
       .patch<CartResponse>(`${this.api}/cart/items/${itemId}`, { qty })
-      .pipe(tap((res) => this.items.set(res.data.items)));
+      .pipe(tap((res) => this.applyLatest(res.data.items, seq)));
   }
 
   removeItem(itemId: string): Observable<CartResponse> {
+    const seq = ++this.seq;
     return this.http
       .delete<CartResponse>(`${this.api}/cart/items/${itemId}`)
-      .pipe(tap((res) => this.items.set(res.data.items)));
+      .pipe(tap((res) => this.applyLatest(res.data.items, seq)));
   }
 
   clear(): Observable<CartResponse> {
+    const seq = ++this.seq;
     return this.http
       .delete<CartResponse>(`${this.api}/cart`)
-      .pipe(tap((res) => this.items.set(res.data.items)));
+      .pipe(tap((res) => this.applyLatest(res.data.items, seq)));
   }
 }

@@ -323,7 +323,12 @@ export class CatalogComponent implements OnInit {
     this.seo.setJsonLd([]);
   }
 
+  // Guards against out-of-order responses when filters/pages change rapidly:
+  // only the latest request may update the list
+  private loadSeq = 0;
+
   private loadProducts(): void {
+    const seq = ++this.loadSeq;
     this.loading.set(true);
     const query: ProductListQuery = {
       page: this.currentPage(),
@@ -337,11 +342,13 @@ export class CatalogComponent implements OnInit {
 
     this.catalogService.getProducts(query).subscribe({
       next: (res) => {
+        if (seq !== this.loadSeq) return;
         this.products.set(res.data);
         this.meta.set(res.meta);
         this.loading.set(false);
       },
       error: () => {
+        if (seq !== this.loadSeq) return;
         this.products.set([]);
         this.loading.set(false);
       },

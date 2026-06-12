@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
@@ -425,6 +425,27 @@ export class CheckoutComponent implements OnInit {
     () => this.cart.items().length > 0 && this.cart.items().every((i) => i.codAvailable),
   );
 
+  // If the bag changes (e.g. a non-COD item added from the drawer) while COD is
+  // selected, fall back to online so the selection can't go stale
+  private readonly codGuard = effect(() => {
+    if (!this.codEligible() && this.paymentMethod() === 'cod') {
+      this.paymentMethod.set('online');
+    }
+  });
+
+  // Keep the guest email requirement in sync with auth state (it can change
+  // mid-checkout, e.g. logging in from another tab)
+  private readonly emailValidatorGuard = effect(() => {
+    const emailCtrl = this.form.get('email');
+    if (!emailCtrl) return;
+    if (this.auth.isAuthenticated()) {
+      emailCtrl.clearValidators();
+    } else {
+      emailCtrl.setValidators([Validators.required, Validators.email]);
+    }
+    emailCtrl.updateValueAndValidity({ emitEvent: false });
+  });
+
   // Coupon state
   readonly showCouponInput = signal(false);
   readonly couponCode = signal('');
@@ -466,9 +487,6 @@ export class CheckoutComponent implements OnInit {
         },
       });
     } else {
-      // Guests must supply a contact email for confirmation + order lookup
-      this.form.get('email')?.addValidators([Validators.required, Validators.email]);
-      this.form.get('email')?.updateValueAndValidity();
       this.prefillGuestAddress();
     }
   }
@@ -564,13 +582,13 @@ export class CheckoutComponent implements OnInit {
       country: v.country ?? 'IN',
     };
     const contactEmail = this.auth.currentUser()?.email ?? v.email ?? undefined;
-    this.persistAddress(shippingAddress);
 
     if (this.paymentMethod() === 'cod') {
       this.checkoutService
         .placeCodOrder(shippingAddress, v.notes ?? undefined, this.coupon()?.code, contactEmail)
         .subscribe({
           next: (res) => {
+            this.persistAddress(shippingAddress);
             this.cart.load();
             this.afterOrder(res.data.orderId, contactEmail);
           },
@@ -586,6 +604,7 @@ export class CheckoutComponent implements OnInit {
       .createOrder(shippingAddress, v.notes ?? undefined, this.coupon()?.code, contactEmail)
       .subscribe({
         next: async (res) => {
+          this.persistAddress(shippingAddress);
           const { orderId, razorpayOrderId, amount, currency, keyId } = res.data;
           const user = this.auth.currentUser();
 
@@ -655,7 +674,17 @@ export class CheckoutComponent implements OnInit {
     country: string;
   }): void {
     if (this.auth.isAuthenticated()) {
-      if (!this.selectedAddressId() && this.saveAddress()) {
+      // Skip when an existing saved address was picked, when the user opted out,
+      // or when an equivalent address is already in the book (repeat checkouts
+      // would otherwise pile up duplicates)
+      const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
+      const duplicate = this.savedAddresses().some(
+        (a) =>
+          norm(a.name) === norm(addr.name) &&
+          norm(a.line1) === norm(addr.line1) &&
+          norm(a.postalCode) === norm(addr.postalCode),
+      );
+      if (!this.selectedAddressId() && this.saveAddress() && !duplicate) {
         this.addressesService
           .create({ ...addr, isDefault: this.savedAddresses().length === 0 })
           .subscribe({ next: () => {}, error: () => {} });

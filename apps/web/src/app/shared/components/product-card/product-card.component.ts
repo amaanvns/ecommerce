@@ -82,11 +82,15 @@ import { AuthService } from '../../../core/services/auth.service';
           <p class="text-sm text-ink-400">{{ product().brand }}</p>
         }
         <p class="text-sm text-ink tabular pt-1">
-          {{ +(product().minPrice ?? 0) | currency: 'INR' : 'symbol' : '1.0-0' }}
-          @if (hasDiscount()) {
-            <span class="ml-2 text-ink-400 line-through text-xs">
-              {{ +product().compareAtPrice! | currency: 'INR' : 'symbol' : '1.0-0' }}
-            </span>
+          @if (product().minPrice !== null) {
+            {{ +product().minPrice! | currency: 'INR' : 'symbol' : '1.0-0' }}
+            @if (hasDiscount()) {
+              <span class="ml-2 text-ink-400 line-through text-xs">
+                {{ +product().compareAtPrice! | currency: 'INR' : 'symbol' : '1.0-0' }}
+              </span>
+            }
+          } @else {
+            <span class="text-ink-400">Price on request</span>
           }
         </p>
       </div>
@@ -99,9 +103,8 @@ export class ProductCardComponent {
   readonly auth = inject(AuthService);
 
   hasDiscount(): boolean {
-    return (
-      !!this.product().compareAtPrice && +this.product().compareAtPrice! > +this.product().minPrice!
-    );
+    const { compareAtPrice, minPrice } = this.product();
+    return minPrice !== null && !!compareAtPrice && +compareAtPrice > +minPrice;
   }
 
   /**

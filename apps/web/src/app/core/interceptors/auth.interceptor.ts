@@ -1,12 +1,40 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { catchError, finalize, map, Observable, shareReplay, switchMap, throwError } from 'rxjs';
 import { TokenService } from '../services/token.service';
 import { AuthService } from '../services/auth.service';
 
-let isRefreshing = false;
-const refreshed$ = new BehaviorSubject<string | null>(null);
+/**
+ * Single in-flight refresh shared by every 401 that arrives while it runs.
+ * Success → all waiters retry with the new token. Failure → the error propagates
+ * to every waiter (nobody hangs), the session is cleared once, and the user is
+ * sent to login.
+ */
+let refreshInFlight: Observable<string> | null = null;
+
+function refreshOnce(
+  authService: AuthService,
+  tokenService: TokenService,
+  router: Router,
+): Observable<string> {
+  if (!refreshInFlight) {
+    refreshInFlight = authService.refreshTokens().pipe(
+      map((res) => res.data.accessToken),
+      catchError((refreshErr) => {
+        tokenService.clearTokens();
+        authService.currentUser.set(null);
+        router.navigate(['/auth/login']);
+        return throwError(() => refreshErr);
+      }),
+      finalize(() => {
+        refreshInFlight = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+  }
+  return refreshInFlight;
+}
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const tokenService = inject(TokenService);
@@ -27,37 +55,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authedReq).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err.status !== 401) return throwError(() => err);
+      // Only try to refresh when the request was actually authenticated —
+      // a guest's 401 has no session to refresh
+      if (err.status !== 401 || !token) return throwError(() => err);
 
-      if (!isRefreshing) {
-        isRefreshing = true;
-        refreshed$.next(null);
-
-        return authService.refreshTokens().pipe(
-          switchMap((res) => {
-            isRefreshing = false;
-            refreshed$.next(res.data.accessToken);
-            const retried = req.clone({
-              setHeaders: { Authorization: `Bearer ${res.data.accessToken}` },
-            });
-            return next(retried);
-          }),
-          catchError((refreshErr) => {
-            isRefreshing = false;
-            tokenService.clearTokens();
-            authService.currentUser.set(null);
-            router.navigate(['/auth/login']);
-            return throwError(() => refreshErr);
-          }),
-        );
-      }
-
-      // Another request already triggered refresh — wait for the new token
-      return refreshed$.pipe(
-        filter((t): t is string => t !== null),
-        take(1),
+      return refreshOnce(authService, tokenService, router).pipe(
         switchMap((newToken) =>
-          next(req.clone({ setHeaders: { Authorization: `Bearer ${newToken}` } })),
+          next(
+            req.clone({
+              withCredentials: true,
+              setHeaders: { Authorization: `Bearer ${newToken}` },
+            }),
+          ),
         ),
       );
     }),

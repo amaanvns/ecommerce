@@ -159,6 +159,8 @@ export class OrderConfirmationComponent implements OnInit {
       typeof history !== 'undefined' ? (history.state?.email as string | undefined) : undefined;
     const stateEmail = navEmail ?? this.rememberedEmail(id);
     if (stateEmail) {
+      // Persist immediately — a refresh right after landing loses history.state
+      this.rememberEmail(id, stateEmail);
       this.email.set(stateEmail);
       this.loadGuest(stateEmail);
     } else {
