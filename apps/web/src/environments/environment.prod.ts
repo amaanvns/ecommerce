@@ -1,6 +1,8 @@
 export const environment = {
   production: true,
-  // Replace this with your deployed API URL (no trailing slash).
-  // Example: 'https://shopzone-api.onrender.com/api/v1'
-  apiUrl: 'https://starenterprises-e3hx.onrender.com/api/v1',
+  // API calls go through the Vercel domain, which proxies /api/* to Render
+  // (see apps/web/vercel.json). Same-origin requests make the guest-cart
+  // cookie FIRST-party — Safari/iOS block third-party cookies, so calling
+  // Render directly would silently break guest carts there.
+  apiUrl: 'https://ecommerce-web-iota-ten.vercel.app/api/v1',
 };

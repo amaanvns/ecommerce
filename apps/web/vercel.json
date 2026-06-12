@@ -3,5 +3,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist/web/browser",
   "framework": null,
-  "rewrites": [{ "source": "/((?!.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://starenterprises-e3hx.onrender.com/api/:path*"
+    },
+    { "source": "/((?!.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
+  ]
 }
