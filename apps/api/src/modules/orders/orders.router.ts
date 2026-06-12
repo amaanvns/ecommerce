@@ -8,8 +8,11 @@ import { AppError } from '../../middleware/error.js';
 
 export const ordersRouter = Router();
 
-// GET /api/v1/orders/guest/:id?email=… — public lookup for guest orders (no account).
+// GET /api/v1/orders/guest/:id?email=… — public lookup gated by the checkout email.
 // Defined BEFORE the authenticate guard so guests can view their confirmation.
+// Deliberately NOT restricted to userId IS NULL: the email is the proof of access,
+// and a guest must keep their tracking link working even after the order is later
+// claimed onto an account.
 const guestLookupSchema = z.object({ email: z.string().email() });
 
 ordersRouter.get('/guest/:id', async (req, res, next) => {
@@ -23,7 +26,6 @@ ordersRouter.get('/guest/:id', async (req, res, next) => {
       .where(
         and(
           eq(orders.id, req.params.id),
-          isNull(orders.userId),
           sql`lower(${orders.contactEmail}) = lower(${query.data.email})`,
         ),
       )
@@ -40,9 +42,14 @@ ordersRouter.get('/guest/:id', async (req, res, next) => {
 });
 
 // GET /api/v1/orders/track?orderNumber=…&email=… — public "track order" for guests,
-// who know their order number (not the internal id). Returns the order if the email matches.
+// who know their order number (not the internal id). Returns the order if the email
+// matches. Order numbers are generated uppercase, so normalize the input.
 const guestTrackSchema = z.object({
-  orderNumber: z.string().trim().min(1),
+  orderNumber: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((s) => s.toUpperCase()),
   email: z.string().email(),
 });
 
@@ -57,7 +64,6 @@ ordersRouter.get('/track', async (req, res, next) => {
       .where(
         and(
           eq(orders.orderNumber, query.data.orderNumber),
-          isNull(orders.userId),
           sql`lower(${orders.contactEmail}) = lower(${query.data.email})`,
         ),
       )
@@ -79,7 +85,11 @@ ordersRouter.use(authenticate);
 // Proof of ownership = order number + the email it was placed under (works even
 // when that email differs from the account email).
 const claimSchema = z.object({
-  orderNumber: z.string().trim().min(1),
+  orderNumber: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((s) => s.toUpperCase()),
   email: z.string().email(),
 });
 

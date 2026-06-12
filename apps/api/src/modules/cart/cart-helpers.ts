@@ -51,8 +51,12 @@ export async function resolveCart(req: Request, res: Response): Promise<Cart> {
     res.cookie(CART_COOKIE, sessionId, cartCookieOptions);
   }
 
-  const [cart] = await db.insert(carts).values({ sessionId }).returning();
-  return cart;
+  // session_id has a partial unique index; under a concurrent first-request race
+  // the second insert conflicts — fall back to selecting the winner's row.
+  const [cart] = await db.insert(carts).values({ sessionId }).onConflictDoNothing().returning();
+  if (cart) return cart;
+  const [winner] = await db.select().from(carts).where(eq(carts.sessionId, sessionId)).limit(1);
+  return winner;
 }
 
 /**

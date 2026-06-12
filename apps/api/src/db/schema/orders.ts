@@ -44,6 +44,9 @@ export const orders = pgTable('orders', {
   total: numeric('total', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 3 }).notNull().default('INR'),
   paymentStatus: paymentStatusEnum('payment_status').notNull().default('pending'),
+  // Payment-gateway order id (Razorpay order id). verify-payment matches on this so
+  // a signature for one gateway order can never confirm a different store order.
+  gatewayOrderRef: varchar('gateway_order_ref', { length: 255 }),
   shippingAddress: jsonb('shipping_address').notNull(),
   billingAddress: jsonb('billing_address'),
   couponId: uuid('coupon_id'),

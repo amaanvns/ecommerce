@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { db } from '../../db/client.js';
 import { users, refreshTokens } from '../../db/schema/index.js';
 import { eq } from 'drizzle-orm';
@@ -11,19 +12,30 @@ import { claimGuestOrdersByEmail } from '../orders/order-helpers.js';
 
 export const authRouter = Router();
 
+// Emails are normalized to lowercase so Foo@x.com and foo@x.com are one account
+// and login is case-insensitive.
 const registerSchema = z.object({
   name: z.string().min(2).max(255),
-  email: z.string().email(),
+  email: z
+    .string()
+    .email()
+    .transform((e) => e.toLowerCase()),
   password: z.string().min(8),
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z
+    .string()
+    .email()
+    .transform((e) => e.toLowerCase()),
   password: z.string().min(1),
 });
 
 function signTokens(userId: string, role: string, email: string) {
-  const payload = { sub: userId, role, email };
+  // jti makes every token unique — JWT iat has second granularity, so two
+  // logins in the same second would otherwise mint identical refresh tokens
+  // and violate the refresh_tokens unique constraint (500 on login).
+  const payload = { sub: userId, role, email, jti: crypto.randomUUID() };
   const opts = (exp: string): jwt.SignOptions => ({
     expiresIn: exp as jwt.SignOptions['expiresIn'],
   });
@@ -108,7 +120,13 @@ authRouter.post('/refresh', async (req, res, next) => {
     });
     if (!stored || stored.expiresAt < new Date()) throw new AppError(401, 'Refresh token expired');
 
-    await db.delete(refreshTokens).where(eq(refreshTokens.token, refreshToken));
+    // Rotate with a short grace window instead of deleting immediately: another
+    // tab may have an in-flight refresh with this same token, and hard-deleting
+    // it would 401 that tab and log the user out everywhere.
+    await db
+      .update(refreshTokens)
+      .set({ expiresAt: new Date(Date.now() + 60_000) })
+      .where(eq(refreshTokens.token, refreshToken));
 
     const tokens = signTokens(payload.sub, payload.role, payload.email);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);

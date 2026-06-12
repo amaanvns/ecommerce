@@ -21,6 +21,15 @@ import { AppError } from '../../middleware/error.js';
 export const adminRouter = Router();
 adminRouter.use(authenticate, requireRole('admin', 'super_admin'));
 
+/** Parse a pagination param defensively: NaN/negative/absurd values get clamped. */
+function pageParams(query: Record<string, unknown>): { page: number; limit: number } {
+  const rawPage = Number(query['page'] ?? 1);
+  const rawLimit = Number(query['limit'] ?? 20);
+  const page = Number.isFinite(rawPage) ? Math.max(1, Math.floor(rawPage)) : 1;
+  const limit = Number.isFinite(rawLimit) ? Math.min(100, Math.max(1, Math.floor(rawLimit))) : 20;
+  return { page, limit };
+}
+
 // ─── Stats ──────────────────────────────────────────────────────────────────
 
 adminRouter.get('/stats', async (_req, res, next) => {
@@ -77,8 +86,7 @@ adminRouter.get('/stats', async (_req, res, next) => {
 
 adminRouter.get('/orders', async (req, res, next) => {
   try {
-    const page = Number(req.query['page'] ?? 1);
-    const limit = Number(req.query['limit'] ?? 20);
+    const { page, limit } = pageParams(req.query);
     const status = req.query['status'] as string | undefined;
     const offset = (page - 1) * limit;
 
@@ -121,6 +129,18 @@ const updateOrderStatusSchema = z.object({
   status: z.enum(['pending', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled']),
 });
 
+// Forward-only workflow; cancelled/delivered are terminal for the admin dropdown
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['packed', 'shipped', 'cancelled'],
+  packed: ['shipped', 'cancelled'],
+  shipped: ['delivered', 'cancelled'],
+  delivered: [],
+  cancelled: [],
+  return_requested: ['returned', 'cancelled'],
+  returned: [],
+};
+
 adminRouter.patch('/orders/:id/status', async (req, res, next) => {
   try {
     const body = updateOrderStatusSchema.safeParse(req.body);
@@ -133,9 +153,41 @@ adminRouter.patch('/orders/:id/status', async (req, res, next) => {
 
     if (!order) throw new AppError(404, 'Order not found');
 
+    const target = body.data.status;
+    if (target === order.status) {
+      res.json({ data: order });
+      return;
+    }
+    if (!(ALLOWED_TRANSITIONS[order.status] ?? []).includes(target)) {
+      throw new AppError(400, `Cannot move an order from "${order.status}" to "${target}"`);
+    }
+
+    // Cancelling restores stock (same as the customer cancel flow) and flips a
+    // paid order to refunded so the books stay consistent
+    if (target === 'cancelled') {
+      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      await Promise.all(
+        items
+          .filter((i) => i.variantId)
+          .map((i) =>
+            db
+              .update(productVariants)
+              .set({ stockQty: sql`${productVariants.stockQty} + ${i.qty}` })
+              .where(eq(productVariants.id, i.variantId!)),
+          ),
+      );
+    }
+
     const [updated] = await db
       .update(orders)
-      .set({ status: body.data.status, updatedAt: new Date() })
+      .set({
+        status: target,
+        paymentStatus:
+          target === 'cancelled' && order.paymentStatus === 'paid'
+            ? 'refunded'
+            : order.paymentStatus,
+        updatedAt: new Date(),
+      })
       .where(eq(orders.id, order.id))
       .returning();
 
@@ -168,11 +220,13 @@ adminRouter.patch('/orders/:id/payment-status', async (req, res, next) => {
       .where(eq(orders.id, order.id))
       .returning();
 
-    // Keep the related payment row in sync (COD orders have a pending payment record)
+    // Keep the related payment row in sync (COD orders have a pending payment
+    // record). Only pending attempts are flipped — settled/failed attempts from
+    // earlier retries keep their real status.
     await db
       .update(payments)
       .set({ status: body.data.paymentStatus })
-      .where(eq(payments.orderId, order.id));
+      .where(and(eq(payments.orderId, order.id), eq(payments.status, 'pending')));
 
     res.json({ data: updated });
   } catch (err) {
@@ -184,8 +238,7 @@ adminRouter.patch('/orders/:id/payment-status', async (req, res, next) => {
 
 adminRouter.get('/products', async (req, res, next) => {
   try {
-    const page = Number(req.query['page'] ?? 1);
-    const limit = Number(req.query['limit'] ?? 20);
+    const { page, limit } = pageParams(req.query);
     const q = req.query['q'] as string | undefined;
     const offset = (page - 1) * limit;
 
@@ -584,8 +637,7 @@ adminRouter.delete('/products/:id/images/:imageId', async (req, res, next) => {
 
 adminRouter.get('/users', async (req, res, next) => {
   try {
-    const page = Number(req.query['page'] ?? 1);
-    const limit = Number(req.query['limit'] ?? 20);
+    const { page, limit } = pageParams(req.query);
     const q = req.query['q'] as string | undefined;
     const offset = (page - 1) * limit;
 
@@ -646,8 +698,7 @@ adminRouter.patch('/users/:id/block', async (req, res, next) => {
 
 adminRouter.get('/reviews', async (req, res, next) => {
   try {
-    const page = Number(req.query['page'] ?? 1);
-    const limit = Number(req.query['limit'] ?? 20);
+    const { page, limit } = pageParams(req.query);
     const status = req.query['status'] as string | undefined;
     const offset = (page - 1) * limit;
 
@@ -741,8 +792,7 @@ adminRouter.delete('/reviews/:id', async (req, res, next) => {
 
 adminRouter.get('/coupons', async (req, res, next) => {
   try {
-    const page = Number(req.query['page'] ?? 1);
-    const limit = Number(req.query['limit'] ?? 20);
+    const { page, limit } = pageParams(req.query);
     const offset = (page - 1) * limit;
 
     const [rows, [{ total }]] = await Promise.all([
@@ -769,6 +819,7 @@ const couponBodySchema = z.object({
   type: z.enum(['percent', 'fixed']),
   value: z.number().positive(),
   minSubtotal: z.number().nonnegative().optional().nullable(),
+  // (percent coupons are additionally capped at 100 below)
   maxDiscount: z.number().nonnegative().optional().nullable(),
   usageLimit: z.number().int().positive().optional().nullable(),
   firstOrderOnly: z.boolean().optional(),
@@ -785,6 +836,10 @@ adminRouter.post('/coupons', async (req, res, next) => {
       return;
     }
     const data = parsed.data;
+
+    if (data.type === 'percent' && data.value > 100) {
+      throw new AppError(400, 'Percent discount cannot exceed 100');
+    }
 
     const code = data.code.toUpperCase();
     const [existing] = await db
@@ -831,6 +886,12 @@ adminRouter.patch('/coupons/:id', async (req, res, next) => {
       .where(eq(coupons.id, req.params.id))
       .limit(1);
     if (!existing) throw new AppError(404, 'Coupon not found');
+
+    const effType = data.type ?? existing.type;
+    const effValue = data.value ?? Number(existing.value);
+    if (effType === 'percent' && effValue > 100) {
+      throw new AppError(400, 'Percent discount cannot exceed 100');
+    }
 
     // If code is changing, check for collision
     if (data.code && data.code.toUpperCase() !== existing.code) {
@@ -892,7 +953,8 @@ adminRouter.delete('/coupons/:id', async (req, res, next) => {
 // Returns daily revenue + order count for paid orders in the window.
 adminRouter.get('/analytics/sales-trend', async (req, res, next) => {
   try {
-    const days = Math.min(Math.max(Number(req.query['days'] ?? 30), 7), 365);
+    const rawDays = Number(req.query['days'] ?? 30);
+    const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 7), 365) : 30;
     const since = new Date();
     since.setUTCHours(0, 0, 0, 0);
     since.setUTCDate(since.getUTCDate() - (days - 1));
@@ -933,7 +995,8 @@ adminRouter.get('/analytics/sales-trend', async (req, res, next) => {
 // GET /admin/analytics/top-products?limit=10
 adminRouter.get('/analytics/top-products', async (req, res, next) => {
   try {
-    const limit = Math.min(Math.max(Number(req.query['limit'] ?? 10), 1), 50);
+    const rawLimit = Number(req.query['limit'] ?? 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 10;
 
     const rows = await db
       .select({
@@ -1003,7 +1066,12 @@ adminRouter.get('/analytics/sales-by-category', async (_req, res, next) => {
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const s = String(value);
+  let s = String(value);
+  // Neutralize spreadsheet formula injection: a leading = + - @ (or tab/CR) makes
+  // Excel/Sheets execute the cell as a formula when the admin opens the export
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
   if (s.includes(',') || s.includes('"') || s.includes('\n')) {
     return '"' + s.replace(/"/g, '""') + '"';
   }

@@ -46,13 +46,17 @@ addressesRouter.post('/', async (req, res, next) => {
     }
     const userId = req.user!.sub;
 
-    // First address is always the default; otherwise honour the flag
-    const [firstExisting] = await db
+    const existing = await db
       .select({ id: addresses.id })
       .from(addresses)
-      .where(eq(addresses.userId, userId))
-      .limit(1);
-    const makeDefault = body.data.isDefault || !firstExisting;
+      .where(eq(addresses.userId, userId));
+
+    if (existing.length >= 20) {
+      throw new AppError(400, 'Address limit reached — delete an old address first');
+    }
+
+    // First address is always the default; otherwise honour the flag
+    const makeDefault = body.data.isDefault || existing.length === 0;
 
     if (makeDefault) {
       await db.update(addresses).set({ isDefault: false }).where(eq(addresses.userId, userId));

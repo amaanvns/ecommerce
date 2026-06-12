@@ -1,19 +1,34 @@
-import { Router } from 'express';
+import { Router, RequestHandler } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
-import { eq, and, isNull } from 'drizzle-orm';
+import { rateLimit } from 'express-rate-limit';
+import { eq, and, isNull, lt, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { cartItems, productVariants, products, orders, orderItems } from '../../db/schema/index.js';
+import {
+  carts,
+  cartItems,
+  productVariants,
+  products,
+  orders,
+  orderItems,
+} from '../../db/schema/index.js';
 import { optionalAuthenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
 import { env } from '../../config/env.js';
 import { validateAndCalculate } from '../coupons/coupon-helpers.js';
-import { fulfillOrder } from './checkout-helpers.js';
-import { findCart } from '../cart/cart-helpers.js';
+import { fulfillOrder, reserveStock } from './checkout-helpers.js';
+import { findCart, CART_COOKIE } from '../cart/cart-helpers.js';
 
 export const checkoutRouter = Router();
 checkoutRouter.use(optionalAuthenticate);
+
+// COD has no payment barrier, so rate-limit it separately to slow down order spam
+const codLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { success: false, error: 'Too many orders placed. Please try again later.' },
+}) as unknown as RequestHandler;
 
 const addressSchema = z.object({
   name: z.string().min(1),
@@ -30,7 +45,7 @@ const addressSchema = z.object({
 function resolveContactEmail(req: { user?: { email: string } }, guestEmail?: string): string {
   const email = req.user?.email ?? guestEmail;
   if (!email) throw new AppError(400, 'An email address is required to place your order');
-  return email;
+  return email.toLowerCase();
 }
 
 function getRazorpay() {
@@ -44,6 +59,81 @@ function generateOrderNumber(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `SZ-${ts}-${rand}`;
+}
+
+interface CheckoutCartRow {
+  qty: number;
+  priceSnapshot: string;
+  variantId: string;
+  sku: string;
+  stockQty: number;
+  productName: string;
+  codAvailable: boolean;
+  isPublished: boolean;
+  deletedAt: Date | null;
+}
+
+/**
+ * Load the cart's lines with everything checkout needs, and run the validations
+ * shared by both payment paths: cart non-empty, every product still published
+ * (not soft-deleted), and stock sufficient at read time.
+ */
+async function loadCheckoutCart(cartId: string): Promise<CheckoutCartRow[]> {
+  const rows = await db
+    .select({
+      qty: cartItems.qty,
+      priceSnapshot: cartItems.priceSnapshot,
+      variantId: cartItems.variantId,
+      sku: productVariants.sku,
+      stockQty: productVariants.stockQty,
+      productName: products.name,
+      codAvailable: products.codAvailable,
+      isPublished: products.isPublished,
+      deletedAt: products.deletedAt,
+    })
+    .from(cartItems)
+    .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(eq(cartItems.cartId, cartId));
+
+  if (rows.length === 0) throw new AppError(400, 'Cart is empty');
+
+  const unavailable = rows.find((r) => !r.isPublished || r.deletedAt !== null);
+  if (unavailable) {
+    throw new AppError(
+      400,
+      `"${unavailable.productName}" is no longer available — please remove it from your bag`,
+    );
+  }
+
+  for (const item of rows) {
+    if (item.stockQty < item.qty) {
+      throw new AppError(400, `Insufficient stock for "${item.productName}"`);
+    }
+  }
+
+  return rows;
+}
+
+/**
+ * Opportunistic cleanup: drop this purchaser's own stale Razorpay attempts
+ * (still pending + unpaid after 45 min) so abandoned "Pay securely" clicks don't
+ * pile up as orphan orders. Stock/coupons/payments are untouched for these rows.
+ */
+async function cleanupStalePendingOrders(userId: string | null, contactEmail: string) {
+  const cutoff = new Date(Date.now() - 45 * 60 * 1000);
+  await db
+    .delete(orders)
+    .where(
+      and(
+        eq(orders.status, 'pending'),
+        eq(orders.paymentStatus, 'pending'),
+        lt(orders.placedAt, cutoff),
+        userId
+          ? eq(orders.userId, userId)
+          : and(isNull(orders.userId), sql`lower(${orders.contactEmail}) = ${contactEmail}`),
+      ),
+    );
 }
 
 // POST /api/v1/checkout/create-order
@@ -69,29 +159,7 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
     const cart = await findCart(req);
     if (!cart) throw new AppError(400, 'Cart is empty');
 
-    const cartRows = await db
-      .select({
-        id: cartItems.id,
-        qty: cartItems.qty,
-        priceSnapshot: cartItems.priceSnapshot,
-        variantId: cartItems.variantId,
-        sku: productVariants.sku,
-        stockQty: productVariants.stockQty,
-        productName: products.name,
-      })
-      .from(cartItems)
-      .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
-      .innerJoin(products, eq(productVariants.productId, products.id))
-      .where(eq(cartItems.cartId, cart.id));
-
-    if (cartRows.length === 0) throw new AppError(400, 'Cart is empty');
-
-    // Validate stock for each item
-    for (const item of cartRows) {
-      if (item.stockQty < item.qty) {
-        throw new AppError(400, `Insufficient stock for "${item.productName}"`);
-      }
-    }
+    const cartRows = await loadCheckoutCart(cart.id);
 
     const subtotal = cartRows.reduce((sum, i) => sum + i.qty * +i.priceSnapshot, 0);
 
@@ -106,6 +174,16 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
 
     const total = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
 
+    // Razorpay's minimum charge is ₹1 — a fully-discounted order can't go online
+    if (total < 1) {
+      throw new AppError(
+        400,
+        'Order total is too low for online payment — please use Cash on Delivery',
+      );
+    }
+
+    await cleanupStalePendingOrders(userId, contactEmail);
+
     const razorpay = getRazorpay();
 
     // Create Razorpay order (amount in paise)
@@ -115,7 +193,8 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
       receipt: generateOrderNumber(),
     });
 
-    // Save pending order in DB
+    // Save pending order in DB, keyed to the gateway order so verification can
+    // prove the signature belongs to THIS order
     const orderNumber = rzpOrder.receipt ?? generateOrderNumber();
     const [order] = await db
       .insert(orders)
@@ -123,6 +202,7 @@ checkoutRouter.post('/create-order', async (req, res, next) => {
         orderNumber,
         userId,
         contactEmail,
+        gatewayOrderRef: rzpOrder.id,
         subtotal: subtotal.toFixed(2),
         discount: discount.toFixed(2),
         total: total.toFixed(2),
@@ -191,17 +271,14 @@ checkoutRouter.post('/verify-payment', async (req, res, next) => {
       throw new AppError(400, 'Payment verification failed — invalid signature');
     }
 
-    const userId = req.user?.sub ?? null;
-
-    // Fetch the order — a logged-in user's own order, or a guest (userId IS NULL) order
+    // Match the order by id AND the gateway order the signature belongs to.
+    // This proves the payment was for THIS order (a signature for a cheap order
+    // can't confirm a different one), and it keeps working even if the order was
+    // claimed onto an account mid-payment.
     const [order] = await db
       .select()
       .from(orders)
-      .where(
-        userId
-          ? and(eq(orders.id, orderId), eq(orders.userId, userId))
-          : and(eq(orders.id, orderId), isNull(orders.userId)),
-      )
+      .where(and(eq(orders.id, orderId), eq(orders.gatewayOrderRef, razorpayOrderId)))
       .limit(1);
 
     if (!order) throw new AppError(404, 'Order not found');
@@ -222,14 +299,14 @@ checkoutRouter.post('/verify-payment', async (req, res, next) => {
           status: 'paid',
           rawResponse: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
         },
+        decrementStock: true,
       },
     );
 
-    // Clear the cart that was checked out (user cart or guest cookie cart)
-    const cart = await findCart(req);
-    if (cart) {
-      await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
-    }
+    // Clear the cart(s) this browser session checked out from. The user may have
+    // logged in between create-order and verify, so clear both the guest cookie
+    // cart and (when authenticated) the user cart.
+    await clearCheckoutCarts(req);
 
     res.json({ data: { orderId: order.id, orderNumber: order.orderNumber } });
   } catch (err) {
@@ -237,8 +314,38 @@ checkoutRouter.post('/verify-payment', async (req, res, next) => {
   }
 });
 
+async function clearCheckoutCarts(req: {
+  user?: { sub: string };
+  cookies?: Record<string, string>;
+}): Promise<void> {
+  const cartIds: string[] = [];
+
+  const sessionId = req.cookies?.[CART_COOKIE];
+  if (sessionId) {
+    const [guestCart] = await db
+      .select({ id: carts.id })
+      .from(carts)
+      .where(eq(carts.sessionId, sessionId))
+      .limit(1);
+    if (guestCart) cartIds.push(guestCart.id);
+  }
+
+  if (req.user) {
+    const [userCart] = await db
+      .select({ id: carts.id })
+      .from(carts)
+      .where(eq(carts.userId, req.user.sub))
+      .limit(1);
+    if (userCart) cartIds.push(userCart.id);
+  }
+
+  for (const id of cartIds) {
+    await db.delete(cartItems).where(eq(cartItems.cartId, id));
+  }
+}
+
 // POST /api/v1/checkout/place-cod — place a Cash-on-Delivery order (no Razorpay)
-checkoutRouter.post('/place-cod', async (req, res, next) => {
+checkoutRouter.post('/place-cod', codLimiter, async (req, res, next) => {
   try {
     const body = createOrderSchema.safeParse(req.body);
     if (!body.success) {
@@ -252,33 +359,11 @@ checkoutRouter.post('/place-cod', async (req, res, next) => {
     const cart = await findCart(req);
     if (!cart) throw new AppError(400, 'Cart is empty');
 
-    const cartRows = await db
-      .select({
-        qty: cartItems.qty,
-        priceSnapshot: cartItems.priceSnapshot,
-        variantId: cartItems.variantId,
-        sku: productVariants.sku,
-        stockQty: productVariants.stockQty,
-        productName: products.name,
-        codAvailable: products.codAvailable,
-      })
-      .from(cartItems)
-      .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
-      .innerJoin(products, eq(productVariants.productId, products.id))
-      .where(eq(cartItems.cartId, cart.id));
-
-    if (cartRows.length === 0) throw new AppError(400, 'Cart is empty');
+    const cartRows = await loadCheckoutCart(cart.id);
 
     // Every item must be COD-eligible
     if (cartRows.some((i) => !i.codAvailable)) {
       throw new AppError(400, 'Some items in your bag are not available for Cash on Delivery');
-    }
-
-    // Validate stock for each item
-    for (const item of cartRows) {
-      if (item.stockQty < item.qty) {
-        throw new AppError(400, `Insufficient stock for "${item.productName}"`);
-      }
     }
 
     const subtotal = cartRows.reduce((sum, i) => sum + i.qty * +i.priceSnapshot, 0);
@@ -293,6 +378,19 @@ checkoutRouter.post('/place-cod', async (req, res, next) => {
     }
 
     const total = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
+
+    // Reserve stock atomically BEFORE taking the order — no payment is captured
+    // for COD, so we can safely reject when a concurrent order beat us to it
+    const reserved = await reserveStock(
+      cartRows.map((i) => ({ variantId: i.variantId, qty: i.qty })),
+    );
+    if (!reserved.ok) {
+      const failedItem = cartRows.find((i) => i.variantId === reserved.failed);
+      throw new AppError(
+        400,
+        `Insufficient stock for "${failedItem?.productName ?? 'an item in your bag'}"`,
+      );
+    }
 
     // Persist the order — confirmed immediately, payment pending until collected
     const [order] = await db
@@ -324,13 +422,14 @@ checkoutRouter.post('/place-cod', async (req, res, next) => {
       })),
     );
 
-    // Decrement stock, record COD payment (pending), bump coupon usage
+    // Record COD payment (pending) + bump coupon usage — stock already reserved
     await fulfillOrder(
       { id: order.id, total: order.total, currency: order.currency, couponId: order.couponId },
       {
         orderStatus: 'confirmed',
         paymentStatus: 'pending',
         payment: { gateway: 'cod', status: 'pending' },
+        decrementStock: false,
       },
     );
 

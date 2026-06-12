@@ -11,7 +11,7 @@ import {
 } from '../../db/schema/index.js';
 import { optionalAuthenticate, authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
-import { resolveCart, CART_COOKIE, cartCookieClearOptions } from './cart-helpers.js';
+import { resolveCart, findCart, CART_COOKIE, cartCookieClearOptions } from './cart-helpers.js';
 
 export const cartRouter = Router();
 cartRouter.use(optionalAuthenticate);
@@ -63,10 +63,15 @@ async function buildCartResponse(cartId: string) {
   }));
 }
 
-// GET /api/v1/cart
+// GET /api/v1/cart — read-only: never creates a cart row (every visitor loads
+// this on page load; carts are only created when something is actually added)
 cartRouter.get('/', async (req, res, next) => {
   try {
-    const cart = await resolveCart(req, res);
+    const cart = await findCart(req);
+    if (!cart) {
+      res.json({ data: { id: null, items: [], total: '0.00' } });
+      return;
+    }
     const items = await buildCartResponse(cart.id);
     const total = items.reduce((sum, i) => sum + i.qty * +i.priceSnapshot, 0);
     res.json({ data: { id: cart.id, items, total: total.toFixed(2) } });
@@ -148,7 +153,8 @@ cartRouter.patch('/items/:itemId', async (req, res, next) => {
     }
     const { qty } = body.data;
 
-    const cart = await resolveCart(req, res);
+    const cart = await findCart(req);
+    if (!cart) throw new AppError(404, 'Cart item not found');
 
     const [item] = await db
       .select()
@@ -161,6 +167,15 @@ cartRouter.patch('/items/:itemId', async (req, res, next) => {
     if (qty === 0) {
       await db.delete(cartItems).where(eq(cartItems.id, item.id));
     } else {
+      // Re-validate stock — POST checks it on add, so updates must too
+      const [variant] = await db
+        .select({ stockQty: productVariants.stockQty })
+        .from(productVariants)
+        .where(eq(productVariants.id, item.variantId))
+        .limit(1);
+      if (!variant) throw new AppError(404, 'Variant not found');
+      if (variant.stockQty < qty) throw new AppError(400, 'Insufficient stock');
+
       await db.update(cartItems).set({ qty }).where(eq(cartItems.id, item.id));
     }
 
@@ -177,7 +192,8 @@ cartRouter.patch('/items/:itemId', async (req, res, next) => {
 // DELETE /api/v1/cart/items/:itemId — remove single item
 cartRouter.delete('/items/:itemId', async (req, res, next) => {
   try {
-    const cart = await resolveCart(req, res);
+    const cart = await findCart(req);
+    if (!cart) throw new AppError(404, 'Cart item not found');
 
     const [item] = await db
       .select()
@@ -201,7 +217,11 @@ cartRouter.delete('/items/:itemId', async (req, res, next) => {
 // DELETE /api/v1/cart — clear all items
 cartRouter.delete('/', async (req, res, next) => {
   try {
-    const cart = await resolveCart(req, res);
+    const cart = await findCart(req);
+    if (!cart) {
+      res.json({ data: { id: null, items: [], total: '0.00' } });
+      return;
+    }
     await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
     await db.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cart.id));
     res.json({ data: { id: cart.id, items: [], total: '0.00' } });
