@@ -54,10 +54,13 @@ import { CartService } from '../../core/services/cart.service';
             <div>
               <p class="label mb-5">Studio</p>
               <ul class="space-y-3 text-sm text-ink-500">
-                <li><a class="hover:text-ink transition-colors">Our Story</a></li>
-                <li><a class="hover:text-ink transition-colors">Journal</a></li>
-                <li><a class="hover:text-ink transition-colors">Sustainability</a></li>
-                <li><a class="hover:text-ink transition-colors">Stockists</a></li>
+                <li>
+                  <a routerLink="/about" class="hover:text-ink transition-colors">About Us</a>
+                </li>
+                <li><a routerLink="/faq" class="hover:text-ink transition-colors">FAQ</a></li>
+                <li>
+                  <a routerLink="/contact" class="hover:text-ink transition-colors">Contact</a>
+                </li>
               </ul>
             </div>
             <div>
@@ -68,9 +71,14 @@ import { CartService } from '../../core/services/cart.service';
                     >Track Order</a
                   >
                 </li>
-                <li><a class="hover:text-ink transition-colors">Contact</a></li>
-                <li><a class="hover:text-ink transition-colors">Shipping</a></li>
-                <li><a class="hover:text-ink transition-colors">Returns</a></li>
+                <li>
+                  <a routerLink="/shipping" class="hover:text-ink transition-colors">Shipping</a>
+                </li>
+                <li>
+                  <a routerLink="/returns" class="hover:text-ink transition-colors"
+                    >Returns &amp; Refunds</a
+                  >
+                </li>
               </ul>
             </div>
             <div>
@@ -90,9 +98,8 @@ import { CartService } from '../../core/services/cart.service';
             <p class="font-medium tracking-[0.2em] text-ink normal-case">STAR ENTERPRISES</p>
             <p>&copy; {{ year }} · All rights reserved</p>
             <div class="flex gap-6">
-              <a class="hover:text-ink transition-colors">Privacy</a>
-              <a class="hover:text-ink transition-colors">Terms</a>
-              <a class="hover:text-ink transition-colors">Cookies</a>
+              <a routerLink="/privacy" class="hover:text-ink transition-colors">Privacy</a>
+              <a routerLink="/terms" class="hover:text-ink transition-colors">Terms</a>
             </div>
           </div>
         </div>

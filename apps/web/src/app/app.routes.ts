@@ -48,6 +48,24 @@ export const routes: Routes = [
           import('./features/orders/track-order.component').then((m) => m.TrackOrderComponent),
         title: 'Track Order — Star Enterprises',
       },
+      // Policy & info pages — one content-driven component, content lives in info-page.component.ts
+      ...(
+        [
+          ['shipping', 'Shipping Policy'],
+          ['returns', 'Returns & Refunds'],
+          ['privacy', 'Privacy Policy'],
+          ['terms', 'Terms & Conditions'],
+          ['faq', 'FAQ'],
+          ['about', 'About Us'],
+          ['contact', 'Contact Us'],
+        ] as const
+      ).map(([path, title]) => ({
+        path,
+        loadComponent: () =>
+          import('./features/info/info-page.component').then((m) => m.InfoPageComponent),
+        data: { page: path },
+        title: `${title} — Star Enterprises`,
+      })),
       {
         path: 'orders',
         loadComponent: () =>
