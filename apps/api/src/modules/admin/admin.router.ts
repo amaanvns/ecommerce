@@ -17,6 +17,7 @@ import {
 import { gte, lte } from 'drizzle-orm';
 import { authenticate, requireRole } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/error.js';
+import { sendOrderShipped } from '../../lib/email.js';
 
 export const adminRouter = Router();
 adminRouter.use(authenticate, requireRole('admin', 'super_admin'));
@@ -190,6 +191,10 @@ adminRouter.patch('/orders/:id/status', async (req, res, next) => {
       })
       .where(eq(orders.id, order.id))
       .returning();
+
+    if (target === 'shipped') {
+      sendOrderShipped({ orderNumber: updated.orderNumber, contactEmail: updated.contactEmail });
+    }
 
     res.json({ data: updated });
   } catch (err) {

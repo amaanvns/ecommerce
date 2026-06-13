@@ -27,6 +27,12 @@ const envSchema = z
     // Observability (optional — no-op without DSN)
     SENTRY_DSN: z.string().url().optional(),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).optional(),
+
+    // Transactional email (optional — emails are skipped/logged without a key).
+    // RESEND_API_KEY from resend.com; EMAIL_FROM must be a verified sender.
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().optional(),
+    STORE_NAME: z.string().default('Star Enterprises'),
   })
   .superRefine((env, ctx) => {
     // In production, require Razorpay keys and a real (non-default) CLIENT_URL.

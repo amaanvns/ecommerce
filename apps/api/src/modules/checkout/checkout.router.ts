@@ -19,6 +19,7 @@ import { env } from '../../config/env.js';
 import { validateAndCalculate } from '../coupons/coupon-helpers.js';
 import { fulfillOrder, reserveStock } from './checkout-helpers.js';
 import { findCart, CART_COOKIE } from '../cart/cart-helpers.js';
+import { sendOrderConfirmation } from '../../lib/email.js';
 
 export const checkoutRouter = Router();
 checkoutRouter.use(optionalAuthenticate);
@@ -308,6 +309,26 @@ checkoutRouter.post('/verify-payment', async (req, res, next) => {
     // cart and (when authenticated) the user cart.
     await clearCheckoutCarts(req);
 
+    // Confirmation email (best-effort)
+    const paidItems = await db
+      .select({
+        productNameSnapshot: orderItems.productNameSnapshot,
+        qty: orderItems.qty,
+        lineTotal: orderItems.lineTotal,
+      })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.id));
+    sendOrderConfirmation(
+      {
+        orderNumber: order.orderNumber,
+        total: order.total,
+        paymentStatus: 'paid',
+        contactEmail: order.contactEmail,
+        items: paidItems,
+      },
+      false,
+    );
+
     res.json({ data: { orderId: order.id, orderNumber: order.orderNumber } });
   } catch (err) {
     next(err);
@@ -435,6 +456,22 @@ checkoutRouter.post('/place-cod', codLimiter, async (req, res, next) => {
 
     // Clear cart
     await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
+
+    // Confirmation email (best-effort)
+    sendOrderConfirmation(
+      {
+        orderNumber: order.orderNumber,
+        total: order.total,
+        paymentStatus: order.paymentStatus,
+        contactEmail: order.contactEmail,
+        items: cartRows.map((i) => ({
+          productNameSnapshot: i.productName,
+          qty: i.qty,
+          lineTotal: (i.qty * +i.priceSnapshot).toFixed(2),
+        })),
+      },
+      true,
+    );
 
     res.json({ data: { orderId: order.id, orderNumber: order.orderNumber } });
   } catch (err) {
