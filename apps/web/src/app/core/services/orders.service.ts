@@ -75,4 +75,8 @@ export class OrdersService {
   cancelOrder(id: string): Observable<{ data: Order }> {
     return this.http.post<{ data: Order }>(`${this.api}/orders/${id}/cancel`, {});
   }
+
+  requestReturn(id: string): Observable<{ data: Order }> {
+    return this.http.post<{ data: Order }>(`${this.api}/orders/${id}/return-request`, {});
+  }
 }

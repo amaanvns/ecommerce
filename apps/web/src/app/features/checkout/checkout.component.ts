@@ -5,7 +5,11 @@ import { CurrencyPipe } from '@angular/common';
 import { CartService } from '../../core/services/cart.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CheckoutService } from '../../core/services/checkout.service';
-import { CouponPreview, CouponsService } from '../../core/services/coupons.service';
+import {
+  AvailableCoupon,
+  CouponPreview,
+  CouponsService,
+} from '../../core/services/coupons.service';
 import { Address, AddressesService } from '../../core/services/addresses.service';
 
 @Component({
@@ -250,6 +254,29 @@ import { Address, AddressesService } from '../../core/services/addresses.service
                   >
                     {{ showCouponInput() ? 'Hide coupon' : 'Have a coupon code?' }}
                   </button>
+
+                  @if (offers().length > 0) {
+                    <div class="mt-4 space-y-2">
+                      <p class="text-2xs uppercase tracking-widest text-ink-400">
+                        Available offers
+                      </p>
+                      @for (o of offers(); track o.code) {
+                        <button
+                          type="button"
+                          (click)="applyOffer(o.code)"
+                          [disabled]="applyingCoupon()"
+                          class="w-full flex items-center justify-between gap-3 border border-dashed border-ink-300 rounded px-3 py-2 text-left hover:border-ink transition-colors"
+                        >
+                          <span class="text-sm">
+                            <span class="font-medium tracking-wider">{{ o.code }}</span>
+                            <span class="text-ink-500 ml-2">{{ offerLabel(o) }}</span>
+                          </span>
+                          <span class="text-xs text-ink-400 shrink-0">Apply</span>
+                        </button>
+                      }
+                    </div>
+                  }
+
                   @if (showCouponInput()) {
                     <div class="mt-3 flex gap-3">
                       <input
@@ -452,6 +479,7 @@ export class CheckoutComponent implements OnInit {
   readonly applyingCoupon = signal(false);
   readonly couponError = signal('');
   readonly coupon = signal<CouponPreview | null>(null);
+  readonly offers = signal<AvailableCoupon[]>([]);
 
   readonly totalAfterDiscount = computed(() => {
     const subtotal = this.cart.total();
@@ -489,6 +517,21 @@ export class CheckoutComponent implements OnInit {
     } else {
       this.prefillGuestAddress();
     }
+
+    // Show currently-available offers as one-tap chips
+    this.couponsService.available().subscribe({ next: (res) => this.offers.set(res.data) });
+  }
+
+  offerLabel(o: AvailableCoupon): string {
+    const off = o.type === 'percent' ? `${+o.value}% off` : `₹${+o.value} off`;
+    const min = o.minSubtotal ? ` over ₹${+o.minSubtotal}` : '';
+    return off + min;
+  }
+
+  applyOffer(code: string): void {
+    this.couponCode.set(code);
+    this.showCouponInput.set(true);
+    this.applyCoupon();
   }
 
   /** Fill the form from a saved address and mark it selected. */

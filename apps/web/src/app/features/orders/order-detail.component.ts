@@ -51,6 +51,15 @@ const STATUS_STEPS = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'] 
                 {{ cancelling() ? 'Cancelling…' : 'Cancel order' }}
               </button>
             }
+            @if (canReturn()) {
+              <button
+                (click)="requestReturn()"
+                [disabled]="returning()"
+                class="text-sm text-ink-500 hover:text-ink transition-colors link-underline"
+              >
+                {{ returning() ? 'Requesting…' : 'Request return' }}
+              </button>
+            }
             <button (click)="reorder()" [disabled]="reordering()" class="btn-outline">
               {{ reordering() ? 'Adding…' : 'Re-order' }}
             </button>
@@ -69,7 +78,17 @@ const STATUS_STEPS = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'] 
         }
 
         <!-- Status stepper -->
-        @if (order()!.status !== 'cancelled') {
+        @if (order()!.status === 'return_requested' || order()!.status === 'returned') {
+          <div class="mb-12 bg-ink-50 px-6 py-5 rounded">
+            <p class="text-base">
+              {{
+                order()!.status === 'returned'
+                  ? 'This order has been returned.'
+                  : 'A return has been requested. We’ll be in touch to arrange pickup.'
+              }}
+            </p>
+          </div>
+        } @else if (order()!.status !== 'cancelled') {
           <div class="bg-ink-50/60 px-8 py-10 mb-12 rounded">
             <div class="flex items-center justify-between">
               @for (step of steps(); track step.key; let last = $last) {
@@ -233,12 +252,21 @@ export class OrderDetailComponent implements OnInit {
   readonly loading = signal(true);
   readonly isSuccess = signal(false);
   readonly cancelling = signal(false);
+  readonly returning = signal(false);
   readonly reordering = signal(false);
   readonly reorderSuccess = signal(false);
 
   readonly canCancel = computed(() => {
     const s = this.order()?.status;
     return s === 'pending' || s === 'confirmed';
+  });
+
+  // Returns are offered on delivered orders within the 7-day window
+  readonly canReturn = computed(() => {
+    const o = this.order();
+    if (o?.status !== 'delivered') return false;
+    const within = Date.now() - new Date(o.updatedAt).getTime() <= 7 * 24 * 60 * 60 * 1000;
+    return within;
   });
 
   readonly steps = computed(() => {
@@ -278,6 +306,18 @@ export class OrderDetailComponent implements OnInit {
         this.cancelling.set(false);
       },
       error: () => this.cancelling.set(false),
+    });
+  }
+
+  requestReturn(): void {
+    if (!confirm('Request a return for this order?')) return;
+    this.returning.set(true);
+    this.ordersService.requestReturn(this.order()!.id).subscribe({
+      next: (res) => {
+        this.order.update((o) => (o ? { ...o, status: res.data.status } : o));
+        this.returning.set(false);
+      },
+      error: () => this.returning.set(false),
     });
   }
 

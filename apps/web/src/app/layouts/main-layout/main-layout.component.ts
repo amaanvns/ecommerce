@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { CartDrawerComponent } from '../../shared/components/cart-drawer/cart-drawer.component';
+import { PwaInstallComponent } from '../../shared/components/pwa-install/pwa-install.component';
 import { CartService } from '../../core/services/cart.service';
 
 @Component({
   selector: 'app-main-layout',
-  imports: [RouterOutlet, RouterLink, NavbarComponent, CartDrawerComponent],
+  imports: [RouterOutlet, RouterLink, NavbarComponent, CartDrawerComponent, PwaInstallComponent],
   template: `
     <div class="min-h-screen flex flex-col bg-paper text-ink">
       <app-navbar />
@@ -14,6 +15,8 @@ import { CartService } from '../../core/services/cart.service';
       <main class="flex-1">
         <router-outlet />
       </main>
+
+      <app-pwa-install />
 
       <footer class="border-t border-ink-200 mt-32">
         <div class="container-edge py-20">

@@ -10,6 +10,14 @@ export interface CouponPreview {
   discount: number;
 }
 
+export interface AvailableCoupon {
+  code: string;
+  type: 'percent' | 'fixed';
+  value: string;
+  minSubtotal: string | null;
+  maxDiscount: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CouponsService {
   private readonly http = inject(HttpClient);
@@ -20,5 +28,9 @@ export class CouponsService {
       code,
       subtotal,
     });
+  }
+
+  available(): Observable<{ data: AvailableCoupon[] }> {
+    return this.http.get<{ data: AvailableCoupon[] }>(`${this.api}/coupons/available`);
   }
 }

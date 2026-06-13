@@ -208,3 +208,34 @@ ordersRouter.post('/:id/cancel', async (req, res, next) => {
     next(err);
   }
 });
+
+// POST /api/v1/orders/:id/return-request — request a return on a delivered order
+// within the return window (7 days of being marked delivered).
+ordersRouter.post('/:id/return-request', async (req, res, next) => {
+  try {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.id, req.params.id), eq(orders.userId, req.user!.sub)))
+      .limit(1);
+
+    if (!order) throw new AppError(404, 'Order not found');
+    if (order.status !== 'delivered') {
+      throw new AppError(400, 'Only delivered orders can be returned');
+    }
+    const windowMs = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - new Date(order.updatedAt).getTime() > windowMs) {
+      throw new AppError(400, 'The 7-day return window for this order has passed');
+    }
+
+    const [updated] = await db
+      .update(orders)
+      .set({ status: 'return_requested', updatedAt: new Date() })
+      .where(eq(orders.id, order.id))
+      .returning();
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
