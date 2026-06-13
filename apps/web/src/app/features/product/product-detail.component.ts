@@ -1,17 +1,37 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
-import { CatalogService, ProductDetail, ProductVariant } from '../../core/services/catalog.service';
+import {
+  CatalogService,
+  ProductDetail,
+  ProductSummary,
+  ProductVariant,
+} from '../../core/services/catalog.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ReviewsService } from '../../core/services/reviews.service';
 import { SeoService } from '../../core/services/seo.service';
+import { RecentlyViewedService } from '../../core/services/recently-viewed.service';
 import { ProductReviewsComponent } from '../../shared/components/product-reviews/product-reviews.component';
+import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
+
+// Generic apparel size chart (inches). Shown when a product has a "Size" option.
+const SIZE_CHART: { size: string; chest: string; waist: string }[] = [
+  { size: 'XS', chest: '34', waist: '28' },
+  { size: 'S', chest: '36', waist: '30' },
+  { size: 'M', chest: '38', waist: '32' },
+  { size: 'L', chest: '40', waist: '34' },
+  { size: 'XL', chest: '42', waist: '36' },
+  { size: 'XXL', chest: '44', waist: '38' },
+];
+
+// First two digits of a PIN map to metro regions that ship faster
+const METRO_PIN_PREFIXES = ['11', '40', '41', '38', '56', '60', '70', '50', '20', '14'];
 
 @Component({
   selector: 'app-product-detail',
-  imports: [RouterLink, CurrencyPipe, ProductReviewsComponent],
+  imports: [RouterLink, CurrencyPipe, ProductReviewsComponent, ProductCardComponent],
   template: `
     @if (loading()) {
       <div class="container-edge py-16 animate-pulse">
@@ -149,6 +169,16 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
                 </div>
               }
 
+              @if (hasSizeOption()) {
+                <button
+                  type="button"
+                  (click)="sizeGuideOpen.set(true)"
+                  class="self-start -mt-2 text-sm text-ink-500 hover:text-ink link-underline"
+                >
+                  Size guide
+                </button>
+              }
+
               <!-- Stock indicator -->
               <div class="flex items-center gap-3 text-sm border-t border-ink-200 pt-6">
                 @if ((selectedVariant()?.stockQty ?? 0) > 0) {
@@ -156,11 +186,32 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
                   @if ((selectedVariant()?.stockQty ?? 0) <= 5) {
                     <span class="text-ink">Only {{ selectedVariant()!.stockQty }} left</span>
                   } @else {
-                    <span class="text-ink-500">In stock · ships in 2–5 days</span>
+                    <span class="text-ink-500">In stock</span>
                   }
                 } @else {
                   <span class="w-1.5 h-1.5 rounded-full bg-ink-400"></span>
                   <span class="text-ink-500">Out of stock</span>
+                }
+              </div>
+
+              <!-- Delivery estimate by pincode -->
+              <div class="border-t border-ink-200 pt-6">
+                <p class="label mb-3">Check delivery</p>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  [value]="pincode()"
+                  (input)="onPincodeInput($any($event.target).value)"
+                  placeholder="Enter 6-digit PIN code"
+                  class="input-clean tabular max-w-[16rem]"
+                />
+                @if (deliveryEstimate(); as est) {
+                  <p class="mt-2 text-sm text-ink">
+                    Estimated delivery: <span class="text-ink-700">{{ est }}</span>
+                  </p>
+                } @else if (pincode().length > 0 && pincode().length < 6) {
+                  <p class="mt-2 text-sm text-ink-400">Enter all 6 digits.</p>
                 }
               </div>
 
@@ -228,8 +279,8 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
               <!-- Service notes -->
               <ul class="border-t border-ink-200 pt-6 space-y-3 text-sm text-ink-500">
                 <li>Free shipping over ₹2,500</li>
-                <li>30-day returns</li>
-                <li>Lifetime care &amp; repair</li>
+                <li>7-day easy returns</li>
+                <li>Cash on Delivery available on eligible items</li>
               </ul>
             </div>
           </div>
@@ -237,7 +288,83 @@ import { ProductReviewsComponent } from '../../shared/components/product-reviews
 
         <!-- Reviews -->
         <app-product-reviews [productId]="product()!.id" />
+
+        <!-- You may also like -->
+        @if (related().length > 0) {
+          <section class="mt-24">
+            <h2 class="text-2xl md:text-3xl font-light tracking-tighter mb-10">
+              You may also like
+            </h2>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+              @for (p of related(); track p.id) {
+                <app-product-card [product]="p" />
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Recently viewed -->
+        @if (recent().length > 0) {
+          <section class="mt-24">
+            <h2 class="text-2xl md:text-3xl font-light tracking-tighter mb-10">Recently viewed</h2>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+              @for (p of recent(); track p.id) {
+                <app-product-card [product]="p" />
+              }
+            </div>
+          </section>
+        }
       </div>
+
+      <!-- Size guide modal -->
+      @if (sizeGuideOpen()) {
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40"
+          (click)="sizeGuideOpen.set(false)"
+        >
+          <div
+            class="bg-paper rounded-lg max-w-md w-full p-8 max-h-[85vh] overflow-y-auto"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="flex items-start justify-between mb-6">
+              <h2 class="text-2xl font-light tracking-tight">Size guide</h2>
+              <button
+                type="button"
+                (click)="sizeGuideOpen.set(false)"
+                class="text-ink-400 hover:text-ink text-xl leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p class="text-sm text-ink-500 mb-5">
+              Measurements in inches. For the best fit, compare with a garment you already own.
+            </p>
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="border-b border-ink text-left">
+                  <th class="pb-2 label">Size</th>
+                  <th class="pb-2 label text-right">Chest</th>
+                  <th class="pb-2 label text-right">Waist</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of sizeChart; track row.size) {
+                  <tr class="border-b border-ink-200">
+                    <td class="py-2.5 text-ink">{{ row.size }}</td>
+                    <td class="py-2.5 text-right tabular text-ink-600">{{ row.chest }}"</td>
+                    <td class="py-2.5 text-right tabular text-ink-600">{{ row.waist }}"</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            <p class="text-xs text-ink-400 mt-5">
+              Sizes are indicative; ethnic-wear fits can vary by style. Reach out if you're between
+              sizes.
+            </p>
+          </div>
+        </div>
+      }
     }
   `,
 })
@@ -249,6 +376,7 @@ export class ProductDetailComponent implements OnInit {
   readonly cartService = inject(CartService);
   readonly wishlist = inject(WishlistService);
   readonly auth = inject(AuthService);
+  readonly recentlyViewed = inject(RecentlyViewedService);
 
   readonly product = signal<ProductDetail | null>(null);
   readonly loading = signal(true);
@@ -256,6 +384,25 @@ export class ProductDetailComponent implements OnInit {
   readonly selectedAttrs = signal<Record<string, string>>({});
   readonly addingToCart = signal(false);
   readonly addedToCart = signal(false);
+
+  readonly related = signal<ProductSummary[]>([]);
+  readonly recent = signal<ProductSummary[]>([]);
+  readonly sizeGuideOpen = signal(false);
+  readonly sizeChart = SIZE_CHART;
+
+  // Pincode delivery estimate
+  readonly pincode = signal('');
+  readonly deliveryEstimate = computed(() => {
+    const pin = this.pincode().trim();
+    if (!/^\d{6}$/.test(pin)) return null;
+    const metro = METRO_PIN_PREFIXES.includes(pin.slice(0, 2));
+    const min = metro ? 2 : 4;
+    const max = metro ? 4 : 7;
+    return this.formatEstimate(min, max);
+  });
+
+  // Show the size guide only when the product is sold by size
+  readonly hasSizeOption = computed(() => this.attrKeys().some((k) => /size/i.test(k)));
 
   readonly activeImage = computed(() => {
     const imgs = this.product()?.images ?? [];
@@ -307,12 +454,19 @@ export class ProductDetailComponent implements OnInit {
         next: (res) => {
           this.product.set(res.data);
           this.loading.set(false);
+          this.activeImageIdx.set(0);
+          this.pincode.set('');
           const initial: Record<string, string> = {};
           for (const [k, vals] of Object.entries(this.attrValues())) {
             initial[k] = vals[0];
           }
           this.selectedAttrs.set(initial);
           this.applySeo(res.data);
+
+          // Recently viewed (record this one, then show the others) + related
+          this.recent.set(this.recentlyViewed.others(res.data.id).slice(0, 4));
+          this.recentlyViewed.record(this.toSummary(res.data));
+          this.loadRelated(res.data);
         },
         error: () => {
           this.product.set(null);
@@ -411,6 +565,47 @@ export class ProductDetailComponent implements OnInit {
       },
       error: () => this.seo.setJsonLd([productSchema, breadcrumbSchema]),
     });
+  }
+
+  /** Build a ProductSummary from the detail payload (for recently-viewed cards). */
+  private toSummary(p: ProductDetail): ProductSummary {
+    const prices = p.variants.map((v) => +v.price);
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      brand: p.brand,
+      categoryId: p.category?.id ?? null,
+      codAvailable: p.codAvailable,
+      image: p.images[0] ? { url: p.images[0].url, alt: p.images[0].alt } : null,
+      minPrice: prices.length ? String(Math.min(...prices)) : null,
+      maxPrice: prices.length ? String(Math.max(...prices)) : null,
+      compareAtPrice: p.variants[0]?.compareAtPrice ?? null,
+    };
+  }
+
+  private loadRelated(p: ProductDetail): void {
+    if (!p.category) {
+      this.related.set([]);
+      return;
+    }
+    this.catalogService.getProducts({ category: p.category.slug, limit: 8 }).subscribe({
+      next: (res) => this.related.set(res.data.filter((x) => x.id !== p.id).slice(0, 4)),
+      error: () => this.related.set([]),
+    });
+  }
+
+  private formatEstimate(minDays: number, maxDays: number): string {
+    const fmt = (d: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + d);
+      return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+    return `${fmt(minDays)} – ${fmt(maxDays)}`;
+  }
+
+  onPincodeInput(value: string): void {
+    this.pincode.set(value.replace(/[^0-9]/g, '').slice(0, 6));
   }
 
   selectAttr(key: string, value: string): void {
