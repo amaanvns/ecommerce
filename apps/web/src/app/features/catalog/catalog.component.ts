@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import {
   CatalogService,
   Category,
+  ProductFacets,
   ProductListQuery,
   ProductSummary,
 } from '../../core/services/catalog.service';
@@ -124,6 +125,48 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
                 />
               </div>
             </div>
+
+            @if (facets().sizes.length > 0) {
+              <div>
+                <p class="label mb-4">Size</p>
+                <div class="flex flex-wrap gap-2">
+                  @for (s of facets().sizes; track s) {
+                    <button
+                      (click)="toggleSize(s)"
+                      class="min-w-[2.5rem] px-3 py-1.5 border rounded-full text-sm transition-all"
+                      [class.bg-ink]="activeSize() === s"
+                      [class.text-paper]="activeSize() === s"
+                      [class.border-ink]="activeSize() === s"
+                      [class.border-ink-200]="activeSize() !== s"
+                      [class.hover:border-ink]="activeSize() !== s"
+                    >
+                      {{ s }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (facets().colors.length > 0) {
+              <div>
+                <p class="label mb-4">Colour</p>
+                <div class="flex flex-wrap gap-2">
+                  @for (c of facets().colors; track c) {
+                    <button
+                      (click)="toggleColor(c)"
+                      class="px-3 py-1.5 border rounded-full text-sm transition-all"
+                      [class.bg-ink]="activeColor() === c"
+                      [class.text-paper]="activeColor() === c"
+                      [class.border-ink]="activeColor() === c"
+                      [class.border-ink-200]="activeColor() !== c"
+                      [class.hover:border-ink]="activeColor() !== c"
+                    >
+                      {{ c }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
 
             @if (hasActiveFilters()) {
               <button
@@ -261,6 +304,9 @@ export class CatalogComponent implements OnInit {
   readonly loading = signal(true);
 
   readonly activeCategory = signal<string | null>(null);
+  readonly activeColor = signal<string | null>(null);
+  readonly activeSize = signal<string | null>(null);
+  readonly facets = signal<ProductFacets>({ colors: [], sizes: [] });
   readonly currentPage = signal(1);
 
   searchInput = '';
@@ -271,7 +317,13 @@ export class CatalogComponent implements OnInit {
   readonly skeletons = new Array(9);
 
   readonly hasActiveFilters = computed(
-    () => !!this.activeCategory() || !!this.searchInput || !!this.minPrice || !!this.maxPrice,
+    () =>
+      !!this.activeCategory() ||
+      !!this.searchInput ||
+      !!this.minPrice ||
+      !!this.maxPrice ||
+      !!this.activeColor() ||
+      !!this.activeSize(),
   );
 
   readonly pageNumbers = computed(() => {
@@ -290,13 +342,19 @@ export class CatalogComponent implements OnInit {
 
     this.route.queryParamMap.subscribe((params) => {
       this.searchInput = params.get('q') ?? '';
-      this.activeCategory.set(params.get('category'));
+      const cat = params.get('category');
+      this.activeCategory.set(cat);
+      this.activeColor.set(params.get('color'));
+      this.activeSize.set(params.get('size'));
       this.sortValue = (params.get('sort') as ProductListQuery['sort']) ?? 'newest';
       this.currentPage.set(Number(params.get('page') ?? 1));
       this.minPrice = params.get('minPrice') ? Number(params.get('minPrice')) : null;
       this.maxPrice = params.get('maxPrice') ? Number(params.get('maxPrice')) : null;
       this.applySeo();
       this.loadProducts();
+      this.catalogService
+        .getFacets(cat ?? undefined)
+        .subscribe({ next: (res) => this.facets.set(res.data) });
     });
   }
 
@@ -337,6 +395,8 @@ export class CatalogComponent implements OnInit {
     };
     if (this.searchInput) query.q = this.searchInput;
     if (this.activeCategory()) query.category = this.activeCategory()!;
+    if (this.activeColor()) query.color = this.activeColor()!;
+    if (this.activeSize()) query.size = this.activeSize()!;
     if (this.minPrice != null) query.minPrice = this.minPrice;
     if (this.maxPrice != null) query.maxPrice = this.maxPrice;
 
@@ -373,6 +433,15 @@ export class CatalogComponent implements OnInit {
     this.pushQueryParams({ category: slug, page: null });
   }
 
+  // Toggle a colour/size chip (clicking the active one clears it)
+  toggleColor(color: string): void {
+    this.pushQueryParams({ color: this.activeColor() === color ? null : color, page: null });
+  }
+
+  toggleSize(size: string): void {
+    this.pushQueryParams({ size: this.activeSize() === size ? null : size, page: null });
+  }
+
   goToPage(page: number): void {
     this.pushQueryParams({ page });
   }
@@ -382,6 +451,8 @@ export class CatalogComponent implements OnInit {
     this.minPrice = null;
     this.maxPrice = null;
     this.sortValue = 'newest';
+    this.activeColor.set(null);
+    this.activeSize.set(null);
     this.router.navigate([], { queryParams: {} });
   }
 

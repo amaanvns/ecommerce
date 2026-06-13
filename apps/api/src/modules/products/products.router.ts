@@ -10,12 +10,24 @@ const listSchema = z.object({
   q: z.string().optional(),
   category: z.string().optional(),
   brand: z.string().optional(),
+  color: z.string().optional(),
+  size: z.string().optional(),
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
   sort: z.enum(['price_asc', 'price_desc', 'newest', 'name_asc']).optional().default('newest'),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(24),
 });
+
+async function resolveCategoryId(slug: string | undefined): Promise<string | undefined> {
+  if (!slug) return undefined;
+  const [cat] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.slug, slug))
+    .limit(1);
+  return cat?.id;
+}
 
 productsRouter.get('/', async (req, res, next) => {
   try {
@@ -24,9 +36,25 @@ productsRouter.get('/', async (req, res, next) => {
       res.status(400).json({ error: query.error.flatten() });
       return;
     }
-    const { q, category, brand, minPrice, maxPrice, sort, page, limit } = query.data;
+    const { q, category, brand, color, size, minPrice, maxPrice, sort, page, limit } = query.data;
 
     const where = [eq(products.isPublished, true), isNull(products.deletedAt)];
+
+    // Variant-attribute filters (Color / Size live in product_variants.attributes JSONB)
+    if (color) {
+      where.push(
+        sql`EXISTS (SELECT 1 FROM ${productVariants} WHERE ${productVariants.productId} = ${products.id} AND lower(${productVariants.attributes}->>'Color') = lower(${color}))` as ReturnType<
+          typeof eq
+        >,
+      );
+    }
+    if (size) {
+      where.push(
+        sql`EXISTS (SELECT 1 FROM ${productVariants} WHERE ${productVariants.productId} = ${products.id} AND lower(${productVariants.attributes}->>'Size') = lower(${size}))` as ReturnType<
+          typeof eq
+        >,
+      );
+    }
 
     // Full-text search against the weighted tsvector (name=A, brand=B, description=C).
     // websearch_to_tsquery accepts natural phrasing, quoted exact matches, and -word exclusions.
@@ -38,15 +66,7 @@ productsRouter.get('/', async (req, res, next) => {
     if (brand) where.push(ilike(products.brand, `%${brand}%`));
 
     // Filter by category slug — resolve to id first
-    let categoryId: string | undefined;
-    if (category) {
-      const [cat] = await db
-        .select({ id: categories.id })
-        .from(categories)
-        .where(eq(categories.slug, category))
-        .limit(1);
-      if (cat) categoryId = cat.id;
-    }
+    const categoryId = await resolveCategoryId(category);
     if (categoryId) where.push(eq(products.categoryId, categoryId));
 
     // Min/max price filters are applied via a subquery on variants
@@ -154,6 +174,33 @@ productsRouter.get('/', async (req, res, next) => {
       data,
       meta: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/v1/products/facets?category=… — distinct Color/Size values for filter chips.
+// Registered before /:slug so "facets" isn't treated as a product slug.
+productsRouter.get('/facets', async (req, res, next) => {
+  try {
+    const categoryId = await resolveCategoryId(req.query['category'] as string | undefined);
+    const base = [eq(products.isPublished, true), isNull(products.deletedAt)];
+    if (categoryId) base.push(eq(products.categoryId, categoryId));
+
+    const distinctValues = async (key: 'Color' | 'Size') => {
+      const rows = await db
+        .selectDistinct({ v: sql<string>`${productVariants.attributes}->>${key}` })
+        .from(productVariants)
+        .innerJoin(products, eq(products.id, productVariants.productId))
+        .where(and(...base, sql`${productVariants.attributes}->>${key} IS NOT NULL`));
+      return rows
+        .map((r) => r.v)
+        .filter((v): v is string => !!v && v !== 'One Size')
+        .sort();
+    };
+
+    const [colors, sizes] = await Promise.all([distinctValues('Color'), distinctValues('Size')]);
+    res.json({ data: { colors, sizes } });
   } catch (err) {
     next(err);
   }

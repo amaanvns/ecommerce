@@ -84,7 +84,6 @@ export const routes: Routes = [
         path: 'wishlist',
         loadComponent: () =>
           import('./features/wishlist/wishlist.component').then((m) => m.WishlistComponent),
-        canActivate: [authGuard],
         title: 'My Wishlist — Star Enterprises',
       },
       {

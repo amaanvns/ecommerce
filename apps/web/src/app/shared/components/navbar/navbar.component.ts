@@ -80,15 +80,15 @@ import { CartService } from '../../../core/services/cart.service';
               Search
             </button>
 
-            @if (auth.isAuthenticated()) {
-              <a
-                routerLink="/wishlist"
-                class="hidden sm:block text-ink-500 hover:text-ink transition-colors"
-                title="Saved"
-              >
-                Saved
-              </a>
+            <a
+              routerLink="/wishlist"
+              class="hidden sm:block text-ink-500 hover:text-ink transition-colors"
+              title="Saved"
+            >
+              Saved
+            </a>
 
+            @if (auth.isAuthenticated()) {
               <div class="relative hidden sm:block">
                 <button
                   type="button"

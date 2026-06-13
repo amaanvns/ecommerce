@@ -239,32 +239,30 @@ const METRO_PIN_PREFIXES = ['11', '40', '41', '38', '56', '60', '70', '50', '20'
                     Add to Bag
                   }
                 </button>
-                @if (auth.isAuthenticated()) {
-                  <button
-                    (click)="toggleWishlist()"
-                    class="px-5 border border-ink rounded-full transition-colors"
-                    [class.bg-ink]="wishlist.has(product()!.id)"
-                    [class.text-paper]="wishlist.has(product()!.id)"
-                    [class.hover:bg-ink]="!wishlist.has(product()!.id)"
-                    [class.hover:text-paper]="!wishlist.has(product()!.id)"
-                    [title]="wishlist.has(product()!.id) ? 'Remove from wishlist' : 'Save'"
+                <button
+                  (click)="toggleWishlist()"
+                  class="px-5 border border-ink rounded-full transition-colors"
+                  [class.bg-ink]="wishlist.has(product()!.id)"
+                  [class.text-paper]="wishlist.has(product()!.id)"
+                  [class.hover:bg-ink]="!wishlist.has(product()!.id)"
+                  [class.hover:text-paper]="!wishlist.has(product()!.id)"
+                  [title]="wishlist.has(product()!.id) ? 'Remove from wishlist' : 'Save'"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    [attr.fill]="wishlist.has(product()!.id) ? 'currentColor' : 'none'"
+                    stroke="currentColor"
+                    stroke-width="1.25"
                   >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      [attr.fill]="wishlist.has(product()!.id) ? 'currentColor' : 'none'"
-                      stroke="currentColor"
-                      stroke-width="1.25"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
-                      />
-                    </svg>
-                  </button>
-                }
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+                    />
+                  </svg>
+                </button>
               </div>
 
               @if (addedToCart()) {
@@ -627,8 +625,7 @@ export class ProductDetailComponent implements OnInit {
   }
 
   toggleWishlist(): void {
-    if (this.product()) {
-      this.wishlist.toggle(this.product()!.id);
-    }
+    const p = this.product();
+    if (p) this.wishlist.toggle(this.toSummary(p));
   }
 }

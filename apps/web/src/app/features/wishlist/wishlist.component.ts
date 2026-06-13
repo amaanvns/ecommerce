@@ -31,7 +31,7 @@ import { ProductCardComponent } from '../../shared/components/product-card/produ
             <div class="relative">
               <app-product-card [product]="item" />
               <button
-                (click)="wishlist.toggle(item.id)"
+                (click)="wishlist.toggle(item)"
                 class="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-paper/95 backdrop-blur hover:bg-paper transition-colors"
                 [attr.aria-label]="'Remove ' + item.name + ' from saved'"
               >

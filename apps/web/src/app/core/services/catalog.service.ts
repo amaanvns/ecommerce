@@ -61,11 +61,18 @@ export interface ProductListQuery {
   q?: string;
   category?: string;
   brand?: string;
+  color?: string;
+  size?: string;
   minPrice?: number;
   maxPrice?: number;
   sort?: 'price_asc' | 'price_desc' | 'newest' | 'name_asc';
   page?: number;
   limit?: number;
+}
+
+export interface ProductFacets {
+  colors: string[];
+  sizes: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -94,5 +101,11 @@ export class CatalogService {
 
   getProduct(slug: string): Observable<{ data: ProductDetail }> {
     return this.http.get<{ data: ProductDetail }>(`${this.api}/products/${slug}`);
+  }
+
+  getFacets(category?: string): Observable<{ data: ProductFacets }> {
+    let params = new HttpParams();
+    if (category) params = params.set('category', category);
+    return this.http.get<{ data: ProductFacets }>(`${this.api}/products/facets`, { params });
   }
 }
